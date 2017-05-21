@@ -2,10 +2,8 @@ package pdc.proxy;
 
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 import nio.TCPProtocol;
@@ -16,6 +14,7 @@ public class HttpServerSelector {
     private static final int TIMEOUT = 3000;
     private static final int PROXY_PORT = 9090;
     private static final String PROXY_HOST = "127.0.0.1";
+    private static boolean verbose = true;
 
     public static void main(String[] args) throws IOException {
     	System.out.println("Initializating proxy server");
@@ -51,4 +50,12 @@ public class HttpServerSelector {
             }
         }
     }
+
+	public static boolean isVerbose() {
+		return verbose;
+	}
+
+	public static void setVerbose(boolean verbose) {
+		HttpServerSelector.verbose = verbose;
+	}
 }

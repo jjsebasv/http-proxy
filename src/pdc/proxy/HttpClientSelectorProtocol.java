@@ -18,12 +18,14 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
 	private Selector selector;
     private int bufferSize;
+    private final ByteBuffer bufferForRead;
     private InetSocketAddress listenAddress;
     private ServerSocketChannel channel;
 
 	public HttpClientSelectorProtocol(String host, int port, Selector selector, int bufferSize) throws IOException {
     	this.selector = selector;
 		this.bufferSize = bufferSize;
+    	bufferForRead = ByteBuffer.allocate(bufferSize);
 		listenAddress = new InetSocketAddress(host, port);
         channel = ServerSocketChannel.open();
         channel.configureBlocking(false);
@@ -49,22 +51,52 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         System.out.println("Accepted new client connection from " + localAddr + " to " + remoteAddr);
         clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
 	}
+	
 
+    /**
+     * Send data to HTTP Client
+     * @param s
+     * @param channel
+     */
+    private void sendToClient(String s, SocketChannel channel) {
+    	if (HttpServerSelector.isVerbose()) {
+			System.out.println("proxy is writing to client the string: " + s);
+    	}
+    	writeInChannel(s, channel);
+    }
+	
+	/**
+     * Read from the socket channel
+     * @param key
+     * @throws IOException
+     */
 	public void handleRead(SelectionKey key) throws IOException {
 		SocketChannel keyChannel = (SocketChannel) key.channel();
-		ByteBuffer buffer = (ByteBuffer) key.attachment();
-
-		int bytesRead = keyChannel.read(buffer);
+        bufferForRead.clear();
+		int bytesRead = -1;
+        bytesRead = keyChannel.read(bufferForRead);
+        String side = channelIsServerSide(keyChannel) ? "server" : "client";
+        
+        if (bytesRead == -1) {
+        	// DO SOMETHING
+        	keyChannel.close();
+            key.cancel();
+            return;
+        }
 
 		byte[] data = new byte[bytesRead];
-		System.arraycopy(buffer.array(), 0, data, 0, bytesRead);
+		System.arraycopy(bufferForRead.array(), 0, data, 0, bytesRead);
 		String stringRead = new String(data, "UTF-8");
-		System.out.println("Read by client");
-		System.out.println(stringRead);
 		
     	try {
-        	ProxyConnection connection = clientToProxyChannelMap.get(keyChannel);
-        	sendToServer(stringRead, connection);
+            System.out.println(side + " wrote: " + stringRead);
+            if (channelIsServerSide(keyChannel)) {
+            	ProxyConnection connection = proxyToClientChannelMap.get(keyChannel);
+            	sendToClient(stringRead, connection.getClientChannel());
+            } else {
+                ProxyConnection connection = clientToProxyChannelMap.get(keyChannel);
+                sendToServer(stringRead, connection);
+            }
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
@@ -76,6 +108,15 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 			key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
 		}
 	}
+
+	/**
+     * Ask if a channel is server side
+     * @param channel
+     * @return
+     */
+    private boolean channelIsServerSide(SocketChannel channel) {
+    	return proxyToClientChannelMap.get(channel) != null; 
+    }
 
 	private void sendToServer(String stringRead, ProxyConnection connection) {
 		try {
@@ -90,7 +131,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	    	}
 	        writeInChannel(stringRead, connection.getServerChannel());
 		} catch (Exception e) {
-			System.out.println("Que rompimo");
+			System.out.println("Que rompimo en send to server");
 		}
 	}
 	
@@ -104,7 +145,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 			channel.register(selector, SelectionKey.OP_WRITE);
 			channelKey.attach(buffer);
 		} catch (ClosedChannelException e) {
-			System.out.println("Error a escribir");
+			System.out.println("Error a escribir en server");
 		}
     }
     
