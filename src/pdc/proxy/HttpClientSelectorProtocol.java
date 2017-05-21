@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
@@ -11,6 +12,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
+
 import nio.TCPProtocol;
 
 public class HttpClientSelectorProtocol implements TCPProtocol {
@@ -149,6 +151,32 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		}
     }
     
+    public void write(SelectionKey key) throws SocketException {
+    	ByteBuffer buffer = (ByteBuffer) key.attachment();
+    	SocketChannel channel = (SocketChannel) key.channel();
+    	channel.socket().setSendBufferSize(1024);
+    	if (HttpServerSelector.isVerbose())
+    		System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
+    	try {
+    		if (HttpServerSelector.isVerbose())
+    			System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
+			channel.write(buffer);
+			if (HttpServerSelector.isVerbose())
+				System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
+			
+			if (buffer.hasRemaining()) {
+				channel.register(selector, SelectionKey.OP_WRITE);
+				SelectionKey channelKey = channel.keyFor(selector);
+				channelKey.attach(buffer);
+			} else {
+				channel.register(selector, SelectionKey.OP_READ);
+				buffer.clear();
+			}
+			
+		} catch (IOException e) {
+			// TODO: LOG ERROR
+		}
+    }
 
 	public void handleWrite(SelectionKey key) throws IOException {
 		ByteBuffer buffer = (ByteBuffer) key.attachment();
