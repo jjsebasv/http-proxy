@@ -17,6 +17,7 @@ public class HttpServerSelector {
     private static final int PORT = 9090;
 
     public static void main(String[] args) throws IOException {
+    	System.out.println("Initializating proxy server");
 
         Selector selector = Selector.open();
 
@@ -30,7 +31,7 @@ public class HttpServerSelector {
         while (true) {
 
         	if (selector.select(TIMEOUT) == 0) {
-                System.out.print(".");
+                //System.out.print(".");
                 continue;
             }
 

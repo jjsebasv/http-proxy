@@ -24,7 +24,14 @@ public class HttpSelectorProtocol implements TCPProtocol {
 	public void handleRead(SelectionKey key) throws IOException {
 		SocketChannel clientChannel = (SocketChannel) key.channel();
 		ByteBuffer buffer = (ByteBuffer) key.attachment();
-		long bytesRead = clientChannel.read(buffer);
+
+		int bytesRead = clientChannel.read(buffer);
+
+		byte[] data = new byte[bytesRead];
+		System.arraycopy(buffer.array(), 0, data, 0, bytesRead);
+		String stringRead = new String(data, "UTF-8");
+		System.out.println(stringRead);
+
 		if (bytesRead == -1) {
 			clientChannel.close();
 		} else if (bytesRead > 0) {
