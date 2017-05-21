@@ -1,6 +1,7 @@
 package pdc.proxy;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -12,7 +13,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
-
 import nio.TCPProtocol;
 
 public class HttpClientSelectorProtocol implements TCPProtocol {
@@ -42,17 +42,25 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	public void setChannel(ServerSocketChannel channel) {
 		this.channel = channel;
 	}
-
-	public void handleAccept(SelectionKey key) throws IOException {
-		SocketChannel newChannel = ((ServerSocketChannel) key.channel()).accept();
-		newChannel.configureBlocking(false);
-		newChannel.register(key.selector(), SelectionKey.OP_READ, ByteBuffer.allocate(bufferSize));
+	
+	/**
+     * Accept connections to XMPP Proxy
+     * @param key
+     * @throws IOException
+     */
+    public void handleAccept(SelectionKey key) throws IOException {
+        ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
+        SocketChannel newChannel = keyChannel.accept();
+        newChannel.configureBlocking(false);
         Socket socket = newChannel.socket();
-        SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-        SocketAddress localAddr = socket.getLocalSocketAddress();
-        System.out.println("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+        if (HttpServerSelector.isVerbose()) {
+            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
+            SocketAddress localAddr = socket.getLocalSocketAddress();
+            System.out.println("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+        }
+        newChannel.register(this.selector, SelectionKey.OP_READ);
         clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
-	}
+    }
 	
 
     /**
@@ -91,7 +99,9 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		String stringRead = new String(data, "UTF-8");
 		
     	try {
-            System.out.println(side + " wrote: " + stringRead);
+    		System.out.println("==============");
+            System.out.println(side + " wrote");
+            System.out.println(stringRead);
             if (channelIsServerSide(keyChannel)) {
             	ProxyConnection connection = proxyToClientChannelMap.get(keyChannel);
             	sendToClient(stringRead, connection.getClientChannel());
@@ -101,13 +111,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             }
 		} catch (Exception e) {
 			// TODO: handle exception
-		}
-
-
-		if (bytesRead == -1) {
-			keyChannel.close();
-		} else if (bytesRead > 0) {
-			key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
 		}
 	}
 
@@ -151,10 +154,8 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		}
     }
     
-    public void handleWrite(SelectionKey key) throws SocketException {
-    	System.out.println("==== Write");
+    public void handleWrite(SelectionKey key) throws SocketException, UnsupportedEncodingException {
     	ByteBuffer buffer = (ByteBuffer) key.attachment();
-		buffer.flip();
     	SocketChannel channel = (SocketChannel) key.channel();
     	channel.socket().setSendBufferSize(1024);
  
@@ -182,17 +183,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		}
     }
 
-	public void write(SelectionKey key) throws IOException {
-		ByteBuffer buffer = (ByteBuffer) key.attachment();
-		buffer.flip();
-		SocketChannel clientChannel = (SocketChannel) key.channel();
-		clientChannel.write(buffer);
-		if (!buffer.hasRemaining()) {
-			key.interestOps(SelectionKey.OP_READ);
-		}
-		buffer.compact();
-	}
-	
 	public void getRemoteServerUrl(ProxyConnection connection, String request) {
     	String uri = request.toString().split("\r\n", 2)[0].split(" ")[1];
     	String host = request.toString().split("\r\n", 2)[1].split(" ")[1];

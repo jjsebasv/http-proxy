@@ -14,7 +14,7 @@ public class HttpServerSelector {
     private static final int TIMEOUT = 3000;
     private static final int PROXY_PORT = 9090;
     private static final String PROXY_HOST = "127.0.0.1";
-    private static boolean verbose = true;
+    private static boolean verbose = false;
 
     public static void main(String[] args) throws IOException {
     	System.out.println("Initializating proxy server");
