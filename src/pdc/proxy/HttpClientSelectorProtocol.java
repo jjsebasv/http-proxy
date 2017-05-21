@@ -151,12 +151,16 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		}
     }
     
-    public void write(SelectionKey key) throws SocketException {
+    public void handleWrite(SelectionKey key) throws SocketException {
+    	System.out.println("==== Write");
     	ByteBuffer buffer = (ByteBuffer) key.attachment();
+		buffer.flip();
     	SocketChannel channel = (SocketChannel) key.channel();
     	channel.socket().setSendBufferSize(1024);
+ 
     	if (HttpServerSelector.isVerbose())
     		System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
+
     	try {
     		if (HttpServerSelector.isVerbose())
     			System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
@@ -178,7 +182,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		}
     }
 
-	public void handleWrite(SelectionKey key) throws IOException {
+	public void write(SelectionKey key) throws IOException {
 		ByteBuffer buffer = (ByteBuffer) key.attachment();
 		buffer.flip();
 		SocketChannel clientChannel = (SocketChannel) key.channel();
