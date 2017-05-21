@@ -26,7 +26,7 @@ public class HttpServerSelector {
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
             
-        TCPProtocol protocol = new HttpSelectorProtocol(BUFSIZE);
+        TCPProtocol protocol = new HttpClientSelectorProtocol(BUFSIZE, selector);
 
         while (true) {
 
