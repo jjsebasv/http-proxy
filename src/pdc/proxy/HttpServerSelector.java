@@ -10,22 +10,19 @@ import nio.TCPProtocol;
 
 
 public class HttpServerSelector {
-    private static final int BUFFER_SIZE = 10000000;
-    private static final int TIMEOUT = 3000;
-    private static final int PROXY_PORT = 9090;
-    private static final String PROXY_HOST = "127.0.0.1";
-    private static boolean verbose = false;
+
+    private static Config configFile = new Config();
 
     public static void main(String[] args) throws IOException {
     	System.out.println("Initializating proxy server");
-    	
+
         Selector selector = Selector.open();
-            
-        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(PROXY_HOST, PROXY_PORT, selector, BUFFER_SIZE);
+
+        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(configFile.getProxyHost(), configFile.getProxyPort(), selector, configFile.getBufferSize());
 
         while (true) {
 
-        	if (selector.select(TIMEOUT) == 0) {
+        	if (selector.select(configFile.getTIMEOUT()) == 0) {
                 if (HttpServerSelector.isVerbose()) {
                 	System.out.print(".");
                 }
@@ -33,7 +30,7 @@ public class HttpServerSelector {
             }
 
         	Iterator<SelectionKey> keyIter = selector.selectedKeys().iterator();
-        	
+
             while (keyIter.hasNext()) {
                 SelectionKey key = keyIter.next();
 
@@ -54,10 +51,7 @@ public class HttpServerSelector {
     }
 
 	public static boolean isVerbose() {
-		return verbose;
+		return configFile.isVerbose();
 	}
 
-	public static void setVerbose(boolean verbose) {
-		HttpServerSelector.verbose = verbose;
-	}
 }

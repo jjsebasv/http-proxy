@@ -24,10 +24,14 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private InetSocketAddress listenAddress;
     private ServerSocketChannel channel;
 
+    private String host;
+    private int port;
+
 	public HttpClientSelectorProtocol(String host, int port, Selector selector, int bufferSize) throws IOException {
     	this.selector = selector;
 		this.bufferSize = bufferSize;
-    	bufferForRead = ByteBuffer.allocate(bufferSize);
+        this.port = port;
+        this.host = host;
 		listenAddress = new InetSocketAddress(host, port);
         channel = ServerSocketChannel.open();
         channel.configureBlocking(false);
@@ -49,17 +53,28 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
      * @throws IOException
      */
     public void handleAccept(SelectionKey key) throws IOException {
+        ProxyConnection connection = new ProxyConnection(key.selector());
+
         ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
         SocketChannel newChannel = keyChannel.accept();
-        newChannel.configureBlocking(false);
         Socket socket = newChannel.socket();
+
+        newChannel.configureBlocking(false);
+
+        connection.setClientChannel(newChannel);
+        connection.setClientKey(key);
+
         if (HttpServerSelector.isVerbose()) {
             SocketAddress remoteAddr = socket.getRemoteSocketAddress();
             SocketAddress localAddr = socket.getLocalSocketAddress();
             System.out.println("Accepted new client connection from " + localAddr + " to " + remoteAddr);
         }
-        newChannel.register(this.selector, SelectionKey.OP_READ);
-        clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
+
+        SelectionKey clientKey = newChannel.register(key.selector(), SelectionKey.OP_READ | SelectionKey.OP_WRITE, connection);
+        clientKey.attach(connection);
+
+        // TODO - remove this
+        //clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
     }
 	
 
