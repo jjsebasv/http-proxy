@@ -10,7 +10,7 @@ import nio.TCPProtocol;
 
 
 public class HttpServerSelector {
-    private static final int BUFFER_SIZE = 256;
+    private static final int BUFFER_SIZE = 10000000;
     private static final int TIMEOUT = 3000;
     private static final int PROXY_PORT = 9090;
     private static final String PROXY_HOST = "127.0.0.1";
@@ -26,7 +26,9 @@ public class HttpServerSelector {
         while (true) {
 
         	if (selector.select(TIMEOUT) == 0) {
-                //System.out.print(".");
+                if (HttpServerSelector.isVerbose()) {
+                	System.out.print(".");
+                }
                 continue;
             }
 

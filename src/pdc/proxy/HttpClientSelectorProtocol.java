@@ -136,7 +136,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	    	}
 	        writeInChannel(stringRead, connection.getServerChannel());
 		} catch (Exception e) {
-			System.out.println("Que rompimo en send to server");
+			System.out.println(e.getStackTrace());
 		}
 	}
 	
@@ -150,14 +150,14 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 			channel.register(selector, SelectionKey.OP_WRITE);
 			channelKey.attach(buffer);
 		} catch (ClosedChannelException e) {
-			System.out.println("Error a escribir en server");
+			System.out.println(e.getStackTrace());
 		}
     }
     
     public void handleWrite(SelectionKey key) throws SocketException, UnsupportedEncodingException {
     	ByteBuffer buffer = (ByteBuffer) key.attachment();
     	SocketChannel channel = (SocketChannel) key.channel();
-    	channel.socket().setSendBufferSize(1024);
+    	channel.socket().setSendBufferSize(this.bufferSize);
  
     	if (HttpServerSelector.isVerbose())
     		System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
