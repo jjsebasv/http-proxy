@@ -126,8 +126,10 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     	String url;
     	if (uri.startsWith("/")) {
     		url = host + uri;
+    		url = url.split("http://")[0];
+    		System.out.println(url);
     	} else {
-    		url = uri;
+    		url = uri.split("://")[1];
     	}
     	System.out.println("REMOTE SERVER: " + url);
     	connection.setServerUrl(url);

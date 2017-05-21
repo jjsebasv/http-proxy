@@ -20,9 +20,6 @@ public class HttpServerSelector {
     public static void main(String[] args) throws IOException {
     	System.out.println("Initializating proxy server");
     	
-		InetSocketAddress hostAddress = new InetSocketAddress("http://www.google.com", 80);
-        SocketChannel serverChannel = SocketChannel.open(hostAddress);
-
         Selector selector = Selector.open();
             
         TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(PROXY_HOST, PROXY_PORT, selector, BUFFER_SIZE);
