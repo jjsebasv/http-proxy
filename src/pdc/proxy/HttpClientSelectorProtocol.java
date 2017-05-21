@@ -121,17 +121,17 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	}
 	
 	public void getRemoteServerUrl(ProxyConnection connection, String request) {
-    	String uri = request.toString().split("\n", 2)[0].split(" ")[1];
-    	String host = request.toString().split("\n", 2)[1].split(" ")[1];
+    	String uri = request.toString().split("\r\n", 2)[0].split(" ")[1];
+    	String host = request.toString().split("\r\n", 2)[1].split(" ")[1];
     	String url;
     	if (uri.startsWith("/")) {
     		url = host + uri;
-    		url = url.split("http://")[0];
+    		url = url.split("://")[1];
     		System.out.println(url);
     	} else {
     		url = uri.split("://")[1];
+    		url = url.substring(0, url.length() - 1);
     	}
-    	System.out.println("REMOTE SERVER: " + url);
     	connection.setServerUrl(url);
     	connection.setServerPort(80);
 	}
