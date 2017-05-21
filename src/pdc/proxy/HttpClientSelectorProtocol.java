@@ -18,10 +18,25 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
 	private Selector selector;
     private int bufferSize;
+    private InetSocketAddress listenAddress;
+    private ServerSocketChannel channel;
 
-	public HttpClientSelectorProtocol(int bufferSize, Selector selector) {
+	public HttpClientSelectorProtocol(String host, int port, Selector selector, int bufferSize) throws IOException {
     	this.selector = selector;
 		this.bufferSize = bufferSize;
+		listenAddress = new InetSocketAddress(host, port);
+        channel = ServerSocketChannel.open();
+        channel.configureBlocking(false);
+        channel.socket().bind(listenAddress);
+        channel.register(selector, SelectionKey.OP_ACCEPT);
+	}
+	
+	public ServerSocketChannel getChannel() {
+		return channel;
+	}
+
+	public void setChannel(ServerSocketChannel channel) {
+		this.channel = channel;
 	}
 
 	public void handleAccept(SelectionKey key) throws IOException {
@@ -75,7 +90,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	    	}
 	        writeInChannel(stringRead, connection.getServerChannel());
 		} catch (Exception e) {
-			System.out.println("QUe rompimo");
+			System.out.println("Que rompimo");
 		}
 	}
 	

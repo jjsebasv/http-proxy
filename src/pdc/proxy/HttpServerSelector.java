@@ -5,28 +5,27 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 import nio.TCPProtocol;
 
 
 public class HttpServerSelector {
-    private static final int BUFSIZE = 256;
+    private static final int BUFFER_SIZE = 256;
     private static final int TIMEOUT = 3000;
-    private static final int PORT = 9090;
+    private static final int PROXY_PORT = 9090;
+    private static final String PROXY_HOST = "127.0.0.1";
 
     public static void main(String[] args) throws IOException {
     	System.out.println("Initializating proxy server");
+    	
+		InetSocketAddress hostAddress = new InetSocketAddress("http://www.google.com", 80);
+        SocketChannel serverChannel = SocketChannel.open(hostAddress);
 
         Selector selector = Selector.open();
-
-        ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
-        serverSocketChannel.socket().bind(new InetSocketAddress(PORT));
-        serverSocketChannel.configureBlocking(false);
-        serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
             
-        TCPProtocol protocol = new HttpClientSelectorProtocol(BUFSIZE, selector);
+        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(PROXY_HOST, PROXY_PORT, selector, BUFFER_SIZE);
 
         while (true) {
 
@@ -41,15 +40,15 @@ public class HttpServerSelector {
                 SelectionKey key = keyIter.next();
 
                 if (key.isAcceptable()) {
-                    protocol.handleAccept(key);
+                	HttpClientSelectorProtocol.handleAccept(key);
                 }
 
                 if (key.isReadable()) {
-                    protocol.handleRead(key);
+                	HttpClientSelectorProtocol.handleRead(key);
                 }
 
                 if (key.isValid() && key.isWritable()) {
-                    protocol.handleWrite(key);
+                	HttpClientSelectorProtocol.handleWrite(key);
                 }
                 keyIter.remove();
             }
