@@ -14,15 +14,25 @@ public class Request {
     private String host;
     private String fullRequest;
     private Map<String, String> headers;
+    private String requestBody;
 
     public Request (String requestString) {
         this.headers = new HashMap<>();
+        String requestSections[] = requestString.split("\r\n\r\n");
+        String requestHead = requestSections[0];
 
-        String fullRequest = requestString.split("\r\n\r\n")[0];
-        String requestParts[] = fullRequest.split("\r\n");
+        String requestParts[] = requestHead.split("\r\n");
 
-        this.method = requestParts[0].split(" ")[0];
-        this.uri = (requestParts[0].split("://")[1]).split(" ")[0];
+        if (requestSections.length > 1 && requestSections[1].contains("HEAD")) {
+            this.requestBody = requestSections[1];
+        }
+
+        if (isMethod(requestString)) {
+            this.method = requestParts[0].split(" ")[0];
+            this.url = (requestParts[0].split("://")[1]).split(" ")[0];
+            if (this.url.endsWith("/"))
+                this.url = this.url.substring(0, this.url.length() -1);
+        }
 
         for (int i = 1; i < requestParts.length; i++) {
             String aux[] = requestParts[i].split(":");
@@ -30,8 +40,18 @@ public class Request {
             if (aux[0].toLowerCase().equals("host")) this.host = aux[1];
         }
 
-        this.url = this.uri.substring(0, this.uri.length() -1);
-        this.fullRequest = fullRequest + "\r\n\r\n";
+        this.fullRequest = requestHead + "\r\n\r\n";
+        if (this.requestBody != null) {
+            this.fullRequest = this.fullRequest + this.requestBody + "\r\n\r\n";
+        }
+    }
+
+    private boolean isMethod(String r) {
+        if( r.startsWith("GET") || r.startsWith("POST") || r.startsWith("OPTIONS") || r.startsWith("HEAD") ||
+                r.startsWith("PUT") || r.startsWith("DELETE") || r.startsWith("CONNECT") || r.startsWith("TRACE") ||
+                r.startsWith("PATCH") )
+            return true;
+        return false;
     }
 
     public String getMethod() {

@@ -31,7 +31,7 @@ public class ProxyConnection {
     public ByteBuffer buffer;
     private Selector selector;
 
-    public String message;
+    public Request request;
 		
 	public ProxyConnection(SocketChannel clientChannel) {
 		this.clientChannel = clientChannel; 
