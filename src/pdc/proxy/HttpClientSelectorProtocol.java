@@ -107,6 +107,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
             connection.message = stringRead;
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
+            System.out.println("Message read --- " + stringRead);
         } else {
             // TODO -- Close Connection
         }
@@ -202,6 +203,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             serverKey.attach(connection);
         } catch (Exception e) {
             System.out.println(e.getStackTrace());
+            System.out.println("Aca otro error -- " + connection.message);
         }
     }
 
@@ -259,13 +261,16 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		} catch (IOException e) {
 		    // TODO -- Log error
 			System.out.println(e.getStackTrace());
+            System.out.println("Aca error --- " + stringRead);
 		}
 		connection.buffer.clear();
     }
 
 
 	public void getRemoteServerUrl(ProxyConnection connection, String request) {
-    	String uri = request.toString().split("\r\n", 2)[0].split(" ")[1];
+        Request r = new Request(request);
+        String rUrl = r.getUrl();
+	    String uri = request.toString().split("\r\n", 2)[0].split(" ")[1];
     	String host = request.toString().split("\r\n", 2)[1].split(" ")[1];
     	String url;
     	if (uri.startsWith("/")) {
@@ -278,6 +283,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     	}
     	connection.setServerUrl(url);
     	connection.setServerPort(80);
+        System.out.println(rUrl.toLowerCase().equals(url.toLowerCase()));
 	}
 
 
