@@ -1,5 +1,7 @@
 package pdc.proxy;
 
+import com.sun.org.apache.bcel.internal.generic.Select;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -28,6 +30,8 @@ public class ProxyConnection {
 
     public ByteBuffer buffer;
     private Selector selector;
+
+    public String message;
 		
 	public ProxyConnection(SocketChannel clientChannel) {
 		this.clientChannel = clientChannel; 
@@ -69,4 +73,6 @@ public class ProxyConnection {
 	public void setServerChannel(SocketChannel serverChannel) {
 		this.serverChannel = serverChannel;
 	}
+
+    public Selector getSelector() { return this.selector; }
 }

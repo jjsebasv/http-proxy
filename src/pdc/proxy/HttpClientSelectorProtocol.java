@@ -20,7 +20,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
 	private Selector selector;
     private int bufferSize;
-    private final ByteBuffer bufferForRead;
+
     private InetSocketAddress listenAddress;
     private ServerSocketChannel channel;
 
@@ -48,7 +48,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	}
 	
 	/**
-     * Accept connections to XMPP Proxy
+     * Accept connections to HTTP Proxy
      * @param key
      * @throws IOException
      */
@@ -76,43 +76,42 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         // TODO - remove this
         //clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
     }
-	
 
-    /**
-     * Send data to HTTP Client
-     * @param s
-     * @param channel
-     */
-    private void sendToClient(String s, SocketChannel channel) {
-    	if (HttpServerSelector.isVerbose()) {
-			System.out.println("proxy is writing to client the string: " + s);
-    	}
-    	writeInChannel(s, channel);
-    }
-	
 	/**
      * Read from the socket channel
      * @param key
      * @throws IOException
      */
 	public void handleRead(SelectionKey key) throws IOException {
+	    ProxyConnection connection = (ProxyConnection) key.attachment();
 		SocketChannel keyChannel = (SocketChannel) key.channel();
-        bufferForRead.clear();
-		int bytesRead = -1;
-        bytesRead = keyChannel.read(bufferForRead);
+
+        int bytesRead = -1;
+        connection.buffer = ByteBuffer.allocate(bufferSize);
+        bytesRead = keyChannel.read(connection.buffer);
+
         String side = channelIsServerSide(keyChannel) ? "server" : "client";
         
         if (bytesRead == -1) {
-        	// DO SOMETHING
-        	keyChannel.close();
+        	// TODO -- Add logger here
+            keyChannel.close();
             key.cancel();
             return;
+        } else if( bytesRead > 0) {
+            key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+            // TODO -- Add Metrics of bytes read here
+
+            byte[] data = new byte[bytesRead];
+            System.arraycopy((connection.buffer).array(), 0, data, 0, bytesRead);
+            String stringRead = new String(data, "UTF-8");
+
+            connection.message = stringRead;
+            connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
+        } else {
+            // TODO -- Close Connection
         }
 
-		byte[] data = new byte[bytesRead];
-		System.arraycopy(bufferForRead.array(), 0, data, 0, bytesRead);
-		String stringRead = new String(data, "UTF-8");
-		
+	/*
     	try {
     		System.out.println("==============");
             System.out.println(side + " wrote");
@@ -127,9 +126,116 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
+	*/
 	}
 
-	/**
+    public void handleWrite(SelectionKey key) throws SocketException, UnsupportedEncodingException {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        SocketChannel channel = (SocketChannel) key.channel();
+        SocketChannel clientChannel = connection.getClientChannel();
+        SocketChannel serverChannel = connection.getServerChannel();
+
+        ByteBuffer writeBuffer = (ByteBuffer) connection.buffer;
+
+        channel.socket().setSendBufferSize(this.bufferSize);
+
+        if (HttpServerSelector.isVerbose())
+            System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
+
+        try {
+            if(!channel.equals(clientChannel) && !channel.equals(serverChannel) && channel.getRemoteAddress().equals(serverChannel.getRemoteAddress())) {
+                connection.setServerChannel(serverChannel);
+            }
+
+            if (HttpServerSelector.isVerbose())
+                System.out.println("buffer has: " + writeBuffer.remaining() + " remaining bytes");
+
+            if (!writeBuffer.hasRemaining()) {
+                writeBuffer.clear();
+                writeBuffer.flip();
+                if (!writeBuffer.hasRemaining()) {
+                    key.interestOps(SelectionKey.OP_READ);
+                    return;
+                }
+            }
+
+            handleSendMessage(key);
+            key.interestOps(connection.buffer.position() > 0 ? SelectionKey.OP_READ | SelectionKey.OP_WRITE : SelectionKey.OP_READ);
+
+            /*
+                channel.write(buffer);
+
+                if (HttpServerSelector.isVerbose())
+                    System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
+
+                if (buffer.hasRemaining()) {
+                    channel.register(selector, SelectionKey.OP_WRITE);
+                    SelectionKey channelKey = channel.keyFor(selector);
+                    channelKey.attach(buffer);
+                } else {
+                    channel.register(selector, SelectionKey.OP_READ);
+                    buffer.clear();
+                }
+            */
+        } catch (IOException e) {
+            // TODO: LOG ERROR
+        }
+    }
+
+    private void sendToServer(SelectionKey key) {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        try {
+            if (connection.getServerChannel() == null) {
+                getRemoteServerUrl(connection, connection.message);
+                InetSocketAddress hostAddress = new InetSocketAddress(connection.getServerUrl(), connection.getServerPort());
+                SocketChannel serverChannel = SocketChannel.open(hostAddress);
+                connection.setServerChannel(serverChannel);
+
+                // TODO - remove this
+                //proxyToClientChannelMap.put(serverChannel, connection);
+            }
+
+            (connection.getServerChannel()).configureBlocking(false);
+            writeInChannel(key, connection.getServerChannel(), connection.message);
+
+            SelectionKey serverKey = (connection.getServerChannel()).register(connection.getSelector(), SelectionKey.OP_READ);
+            serverKey.attach(connection);
+        } catch (Exception e) {
+            System.out.println(e.getStackTrace());
+        }
+    }
+
+    /**
+     * Send data to HTTP Client
+     * @param key
+     */
+    private void sendToClient(SelectionKey key) {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        if (HttpServerSelector.isVerbose()) {
+            System.out.println("proxy is writing to client the string: " + connection.message);
+        }
+        writeInChannel(key, connection.getClientChannel(), connection.message);
+    }
+
+    /**
+     *
+     * Decides whether the message should be sent to the server or to the client.
+     *
+     * @param key
+     *
+     */
+    private void handleSendMessage(SelectionKey key) {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        SocketChannel channel = (SocketChannel) key.channel();
+        if (channel == connection.getServerChannel()) {
+            sendToClient(key);
+        } else {
+            sendToServer(key);
+        }
+    }
+
+
+    /**
      * Ask if a channel is server side
      * @param channel
      * @return
@@ -138,65 +244,25 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     	return proxyToClientChannelMap.get(channel) != null; 
     }
 
-	private void sendToServer(String stringRead, ProxyConnection connection) {
-		try {
-	    	if (connection.getServerChannel() == null) {
-	    		getRemoteServerUrl(connection, stringRead);
-	    		InetSocketAddress hostAddress = new InetSocketAddress(connection.getServerUrl(), connection.getServerPort());
-	            SocketChannel serverChannel = SocketChannel.open(hostAddress);
-	            serverChannel.configureBlocking(false);
-	            serverChannel.register(this.selector, SelectionKey.OP_READ);
-	            connection.setServerChannel(serverChannel);
-	            proxyToClientChannelMap.put(serverChannel, connection);
-	    	}
-	        writeInChannel(stringRead, connection.getServerChannel());
-		} catch (Exception e) {
-			System.out.println(e.getStackTrace());
-		}
-	}
 	
 	/**
      * Write data to a specific channel
      */
-    public void writeInChannel(String s, SocketChannel channel) {
-    	ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
-    	SelectionKey channelKey = channel.keyFor(selector);
+    public void writeInChannel(SelectionKey key, SocketChannel channel, String stringRead) {
+    	ProxyConnection connection = (ProxyConnection) key.attachment();
+        connection.buffer.clear();
+        connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
     	try {
-			channel.register(selector, SelectionKey.OP_WRITE);
-			channelKey.attach(buffer);
-		} catch (ClosedChannelException e) {
+    	    // TODO -- Add metrics of transfered bytes
+            // TODO -- Log writing to whom
+            channel.write(connection.buffer);
+		} catch (IOException e) {
+		    // TODO -- Log error
 			System.out.println(e.getStackTrace());
 		}
+		connection.buffer.clear();
     }
-    
-    public void handleWrite(SelectionKey key) throws SocketException, UnsupportedEncodingException {
-    	ByteBuffer buffer = (ByteBuffer) key.attachment();
-    	SocketChannel channel = (SocketChannel) key.channel();
-    	channel.socket().setSendBufferSize(this.bufferSize);
- 
-    	if (HttpServerSelector.isVerbose())
-    		System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
 
-    	try {
-    		if (HttpServerSelector.isVerbose())
-    			System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
-			channel.write(buffer);
-			if (HttpServerSelector.isVerbose())
-				System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
-			
-			if (buffer.hasRemaining()) {
-				channel.register(selector, SelectionKey.OP_WRITE);
-				SelectionKey channelKey = channel.keyFor(selector);
-				channelKey.attach(buffer);
-			} else {
-				channel.register(selector, SelectionKey.OP_READ);
-				buffer.clear();
-			}
-			
-		} catch (IOException e) {
-			// TODO: LOG ERROR
-		}
-    }
 
 	public void getRemoteServerUrl(ProxyConnection connection, String request) {
     	String uri = request.toString().split("\r\n", 2)[0].split(" ")[1];
@@ -213,4 +279,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     	connection.setServerUrl(url);
     	connection.setServerPort(80);
 	}
+
+
 }
