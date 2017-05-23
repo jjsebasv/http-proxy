@@ -1,14 +1,12 @@
 package pdc.proxy;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -17,19 +15,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import nio.TCPProtocol;
 
 public class HttpClientSelectorProtocol implements TCPProtocol {
-    private ConcurrentHashMap<SocketChannel, ProxyConnection> clientToProxyChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
     private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
-	private Selector selector;
     private int bufferSize;
 
     private InetSocketAddress listenAddress;
     private ServerSocketChannel channel;
 
+    //not delete this variables because we need them for logs
     private String host;
     private int port;
 
 	public HttpClientSelectorProtocol(String host, int port, Selector selector, int bufferSize) throws IOException {
-    	this.selector = selector;
 		this.bufferSize = bufferSize;
         this.port = port;
         this.host = host;
@@ -73,9 +69,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
         SelectionKey clientKey = newChannel.register(key.selector(), SelectionKey.OP_READ | SelectionKey.OP_WRITE, connection);
         clientKey.attach(connection);
-
-        // TODO - remove this
-        //clientToProxyChannelMap.put(newChannel, new ProxyConnection(newChannel));
     }
 
 	/**
@@ -94,7 +87,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         String side = channelIsServerSide(keyChannel) ? "server" : "client";
         
         if (bytesRead == -1) {
-        	// TODO -- Add logger here
+        	// TODO - LOG
             keyChannel.close();
             key.cancel();
             return;
@@ -109,27 +102,10 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             //connection.request = new Request(stringRead);
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
             connection.getHttpMessage().appendMessage(stringRead);
-            //System.out.println("Message read --- " + stringRead);
         } else {
-            // TODO -- Close Connection
+            // TODO Close Connection
+        	// TODO	LOG ERROR
         }
-
-	/*
-    	try {
-    		System.out.println("==============");
-            System.out.println(side + " wrote");
-            System.out.println(stringRead);
-            if (channelIsServerSide(keyChannel)) {
-            	ProxyConnection connection = proxyToClientChannelMap.get(keyChannel);
-            	sendToClient(stringRead, connection.getClientChannel());
-            } else {
-                ProxyConnection connection = clientToProxyChannelMap.get(keyChannel);
-                sendToServer(stringRead, connection);
-            }
-		} catch (Exception e) {
-			// TODO: handle exception
-		}
-	*/
 	}
 
     public void handleWrite(SelectionKey key) throws SocketException, UnsupportedEncodingException {
@@ -164,24 +140,9 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
             handleSendMessage(key);
             key.interestOps(connection.buffer.position() > 0 ? SelectionKey.OP_READ | SelectionKey.OP_WRITE : SelectionKey.OP_READ);
-
-            /*
-                channel.write(buffer);
-
-                if (HttpServerSelector.isVerbose())
-                    System.out.println("buffer has: " + buffer.remaining() + " remaining bytes");
-
-                if (buffer.hasRemaining()) {
-                    channel.register(selector, SelectionKey.OP_WRITE);
-                    SelectionKey channelKey = channel.keyFor(selector);
-                    channelKey.attach(buffer);
-                } else {
-                    channel.register(selector, SelectionKey.OP_READ);
-                    buffer.clear();
-                }
-            */
         } catch (IOException e) {
             // TODO: LOG ERROR
+            System.out.println(e.getStackTrace());
         }
     }
 
@@ -193,9 +154,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 InetSocketAddress hostAddress = new InetSocketAddress(connection.getServerUrl(), connection.getServerPort());
                 SocketChannel serverChannel = SocketChannel.open(hostAddress);
                 connection.setServerChannel(serverChannel);
-
-                // TODO - remove this
-                //proxyToClientChannelMap.put(serverChannel, connection);
             }
 
             (connection.getServerChannel()).configureBlocking(false);
@@ -204,13 +162,8 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             SelectionKey serverKey = (connection.getServerChannel()).register(connection.getSelector(), SelectionKey.OP_READ);
             serverKey.attach(connection);
         } catch (Exception e) {
+        	// TODO	LOG ERROR
             System.out.println(e.getStackTrace());
-            /*
-            if( connection.request == null ) {
-                System.out.println("La request tiene null, y no se porque :'(");
-            } else
-                System.out.println("Aca otro error -- " + connection.request.getFullRequest());
-            */
         }
     }
 

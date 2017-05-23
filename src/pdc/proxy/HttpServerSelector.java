@@ -11,18 +11,16 @@ import nio.TCPProtocol;
 
 public class HttpServerSelector {
 
-    private static Config configFile = new Config();
-
     public static void main(String[] args) throws IOException {
     	System.out.println("Initializating proxy server");
 
         Selector selector = Selector.open();
 
-        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(configFile.getProxyHost(), configFile.getProxyPort(), selector, configFile.getBufferSize());
+        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(Config.getProxyHost(), Config.getProxyPort(), selector, Config.getBufferSize());
 
         while (true) {
 
-        	if (selector.select(configFile.getTIMEOUT()) == 0) {
+        	if (selector.select(Config.getTIMEOUT()) == 0) {
                 if (HttpServerSelector.isVerbose()) {
                 	System.out.print(".");
                 }
@@ -51,7 +49,7 @@ public class HttpServerSelector {
     }
 
 	public static boolean isVerbose() {
-		return configFile.isVerbose();
+		return Config.isVerbose();
 	}
 
 }
