@@ -16,6 +16,10 @@ public class HttpParser {
     }
 
     public static boolean bodyReady(String contentLength, long readLength) {
-        return contentLength == null || Long.valueOf(contentLength) == readLength;
+        return contentLength == null || Long.valueOf(contentLength) <= readLength;
+    }
+
+    public static boolean headReadyResponse(String message) {
+        return message.contains("\r\n");
     }
 }

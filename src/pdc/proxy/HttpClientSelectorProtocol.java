@@ -244,7 +244,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             } else {
                 sendToServer(key);
             }
-            connection.getHttpMessage().resetMessage();
+            connection.setHttpMessage(new HttpMessage());
         }
     }
 

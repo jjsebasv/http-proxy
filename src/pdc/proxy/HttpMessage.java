@@ -16,7 +16,7 @@ public class HttpMessage {
     private boolean messageReady;
     private ParsingSection parsingSection;
 
-    private Map<String, String> headers = new HashMap<>();
+    private Map<String, String> headers;
     private long bodyLengthRead;
 
     // Head attributes
@@ -24,11 +24,21 @@ public class HttpMessage {
     private String url;
     private String version;
 
+    private String statusCode;
+    private String statusMsg;
+
+    // Request Response
+    private boolean request;
+    private boolean response;
+
     public HttpMessage() {
         this.message = new StringBuilder();
         this.parsingSection = ParsingSection.HEAD;
         this.messageReady = false;
+        this.headers = new HashMap<>();
         this.setBodyLengthRead(0);
+        this.request = false;
+        this.response = false;
     }
 
     public String getUrl() {
@@ -41,6 +51,11 @@ public class HttpMessage {
             case HEAD:
                 if (HttpParser.headReady(this.message.toString())) {
                     this.parsingSection = ParsingSection.HEADER;
+                    this.request = true;
+                    setHeadAttributes();
+                } else if (HttpParser.headReadyResponse(this.message.toString())) {
+                    this.parsingSection = ParsingSection.HEADER;
+                    this.response = true;
                     setHeadAttributes();
                 }
                 break;
@@ -65,6 +80,7 @@ public class HttpMessage {
                 }
                 break;
             case BODY:
+                this.bodyLengthRead = this.message.toString().split("\r\n\r\n")[1].length();
                 if (HttpParser.bodyReady(headers.get("Content-Length"), this.bodyLengthRead)) {
                     this.messageReady = true;
                 }
@@ -76,15 +92,26 @@ public class HttpMessage {
 
     private void setHeadAttributes() {
         String headAttributes[] = this.message.toString().split("\r\n")[0].split(" ");
-        this.method = headAttributes[0];
-        this.url = headAttributes[1].split("://")[1];
-        if (this.url.endsWith("/"))
-            this.url = this.url.substring(0, this.url.length() -1);
-        this.version = headAttributes[2];
+        if (this.request) {
+            this.method = headAttributes[0];
+            this.url = headAttributes[1].split("://")[1];
+            if (this.url.endsWith("/"))
+                this.url = this.url.substring(0, this.url.length() -1);
+            this.version = headAttributes[2];
+        } else if (this.response) {
+            this.statusCode = headAttributes[1];
+            this.statusMsg = headAttributes[2];
+        }
     }
 
     public void resetMessage() {
         this.message = new StringBuilder();
+        /*
+        this.parsingSection = ParsingSection.HEAD;
+        this.messageReady = false;
+        this.headers = new HashMap<>();
+        this.setBodyLengthRead(0);
+        */
     }
 
     public StringBuilder getMessage() {
