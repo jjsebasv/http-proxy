@@ -1,6 +1,7 @@
 package pdc.proxy;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -105,8 +106,10 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             System.arraycopy((connection.buffer).array(), 0, data, 0, bytesRead);
             String stringRead = new String(data, "UTF-8");
 
-            connection.message = stringRead;
+            //connection.request = new Request(stringRead);
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
+            connection.getHttpMessage().appendMessage(stringRead);
+            //System.out.println("Message read --- " + stringRead);
         } else {
             // TODO -- Close Connection
         }
@@ -186,7 +189,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         try {
             if (connection.getServerChannel() == null) {
-                getRemoteServerUrl(connection, connection.message);
+                getRemoteServerUrl(connection);
                 InetSocketAddress hostAddress = new InetSocketAddress(connection.getServerUrl(), connection.getServerPort());
                 SocketChannel serverChannel = SocketChannel.open(hostAddress);
                 connection.setServerChannel(serverChannel);
@@ -196,12 +199,18 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             }
 
             (connection.getServerChannel()).configureBlocking(false);
-            writeInChannel(key, connection.getServerChannel(), connection.message);
+            writeInChannel(key, connection.getServerChannel());
 
             SelectionKey serverKey = (connection.getServerChannel()).register(connection.getSelector(), SelectionKey.OP_READ);
             serverKey.attach(connection);
         } catch (Exception e) {
             System.out.println(e.getStackTrace());
+            /*
+            if( connection.request == null ) {
+                System.out.println("La request tiene null, y no se porque :'(");
+            } else
+                System.out.println("Aca otro error -- " + connection.request.getFullRequest());
+            */
         }
     }
 
@@ -212,9 +221,9 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private void sendToClient(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         if (HttpServerSelector.isVerbose()) {
-            System.out.println("proxy is writing to client the string: " + connection.message);
+            System.out.println("proxy is writing to client the string: " + connection.getHttpMessage().getMessage());
         }
-        writeInChannel(key, connection.getClientChannel(), connection.message);
+        writeInChannel(key, connection.getClientChannel());
     }
 
     /**
@@ -227,13 +236,17 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private void handleSendMessage(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
-        if (channel == connection.getServerChannel()) {
-            sendToClient(key);
-        } else {
-            sendToServer(key);
+
+        //System.out.println(connection.getHttpMessage().getMessage());
+        if (connection.getHttpMessage().isMessageReady()) {
+            if (channel == connection.getServerChannel()) {
+                sendToClient(key);
+            } else {
+                sendToServer(key);
+            }
+            connection.setHttpMessage(new HttpMessage());
         }
     }
-
 
     /**
      * Ask if a channel is server side
@@ -248,8 +261,10 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	/**
      * Write data to a specific channel
      */
-    public void writeInChannel(SelectionKey key, SocketChannel channel, String stringRead) {
+    public void writeInChannel(SelectionKey key, SocketChannel channel) {
     	ProxyConnection connection = (ProxyConnection) key.attachment();
+        String stringRead = connection.getHttpMessage().getMessage().toString();
+
         connection.buffer.clear();
         connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
     	try {
@@ -259,24 +274,15 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		} catch (IOException e) {
 		    // TODO -- Log error
 			System.out.println(e.getStackTrace());
+            System.out.println("Aca error --- " + stringRead);
 		}
 		connection.buffer.clear();
     }
 
 
-	public void getRemoteServerUrl(ProxyConnection connection, String request) {
-    	String uri = request.toString().split("\r\n", 2)[0].split(" ")[1];
-    	String host = request.toString().split("\r\n", 2)[1].split(" ")[1];
-    	String url;
-    	if (uri.startsWith("/")) {
-    		url = host + uri;
-    		url = url.split("://")[1];
-    		System.out.println(url);
-    	} else {
-    		url = uri.split("://")[1];
-    		url = url.substring(0, url.length() - 1);
-    	}
-    	connection.setServerUrl(url);
+	public void getRemoteServerUrl(ProxyConnection connection) {
+        HttpMessage r = connection.getHttpMessage();
+    	connection.setServerUrl(r.getUrl());
     	connection.setServerPort(80);
 	}
 

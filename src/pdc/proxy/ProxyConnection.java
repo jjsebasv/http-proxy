@@ -31,16 +31,18 @@ public class ProxyConnection {
     public ByteBuffer buffer;
     private Selector selector;
 
-    public String message;
+    public Request request;
+    public HttpMessage httpMessage;
 		
 	public ProxyConnection(SocketChannel clientChannel) {
-		this.clientChannel = clientChannel; 
+		this.clientChannel = clientChannel;
 	}
 
 	public ProxyConnection(Selector selector) {
         this.selector = selector;
         this.buffer = ByteBuffer.wrap(new byte[configFile.getBufferSize()]);
-    }
+        this.httpMessage = new HttpMessage();
+	}
 
 	public String getServerUrl() {
 		return serverUrl;
@@ -75,4 +77,12 @@ public class ProxyConnection {
 	}
 
     public Selector getSelector() { return this.selector; }
+
+    public HttpMessage getHttpMessage() {
+        return httpMessage;
+    }
+
+    public void setHttpMessage(HttpMessage httpMessage) {
+        this.httpMessage = httpMessage;
+    }
 }
