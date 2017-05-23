@@ -106,9 +106,10 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             System.arraycopy((connection.buffer).array(), 0, data, 0, bytesRead);
             String stringRead = new String(data, "UTF-8");
 
-            connection.request = new Request(stringRead);
+            //connection.request = new Request(stringRead);
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
-            System.out.println("Message read --- " + stringRead);
+            connection.getHttpMessage().appendMessage(stringRead);
+            //System.out.println("Message read --- " + stringRead);
         } else {
             // TODO -- Close Connection
         }
@@ -204,10 +205,12 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             serverKey.attach(connection);
         } catch (Exception e) {
             System.out.println(e.getStackTrace());
+            /*
             if( connection.request == null ) {
                 System.out.println("La request tiene null, y no se porque :'(");
             } else
                 System.out.println("Aca otro error -- " + connection.request.getFullRequest());
+            */
         }
     }
 
@@ -218,7 +221,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private void sendToClient(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         if (HttpServerSelector.isVerbose()) {
-            System.out.println("proxy is writing to client the string: " + connection.request.getFullRequest());
+            System.out.println("proxy is writing to client the string: " + connection.getHttpMessage().getMessage());
         }
         writeInChannel(key, connection.getClientChannel());
     }
@@ -233,13 +236,17 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     private void handleSendMessage(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
-        if (channel == connection.getServerChannel()) {
-            sendToClient(key);
-        } else {
-            sendToServer(key);
+
+        //System.out.println(connection.getHttpMessage().getMessage());
+        if (connection.getHttpMessage().isMessageReady()) {
+            if (channel == connection.getServerChannel()) {
+                sendToClient(key);
+            } else {
+                sendToServer(key);
+            }
+            connection.getHttpMessage().resetMessage();
         }
     }
-
 
     /**
      * Ask if a channel is server side
@@ -256,7 +263,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
      */
     public void writeInChannel(SelectionKey key, SocketChannel channel) {
     	ProxyConnection connection = (ProxyConnection) key.attachment();
-        String stringRead = connection.request.getFullRequest();
+        String stringRead = connection.getHttpMessage().getMessage().toString();
 
         connection.buffer.clear();
         connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
@@ -274,7 +281,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
 
 	public void getRemoteServerUrl(ProxyConnection connection) {
-        Request r = connection.request;
+        HttpMessage r = connection.getHttpMessage();
     	connection.setServerUrl(r.getUrl());
     	connection.setServerPort(80);
 	}
