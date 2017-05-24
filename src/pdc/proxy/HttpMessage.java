@@ -23,6 +23,7 @@ public class HttpMessage {
 
     private Map<String, String> headers;
     private long bodyLengthRead;
+    private String contentType;
 
     // Head attributes
     private String method;
@@ -51,51 +52,66 @@ public class HttpMessage {
     }
 
     public void setMessageBuffer(ByteBuffer message) {
-        this.messageBuffer = message;
-        CharBuffer messageBuffer = Charset.forName("UTF-8").decode(message);
-        String messageString = messageBuffer.toString();
-        switch (this.parsingSection) {
-            case HEAD:
-                if (HttpParser.headReady(messageString)) {
+
+        byte[] auxBuffer = ByteBuffer.allocate(message.capacity()).array();
+        message.flip();
+        byte b;
+        int i = 0;
+        while (true) {
+            switch (this.parsingSection) {
+                case HEAD:
+
+                    while( (b = message.get()) != '\n' && message.hasRemaining() )
+                        auxBuffer[i++] = b;
+
+                    if( auxBuffer[i-1] == '\r')
+                        setHeadAttributes(new String(auxBuffer, 0, i - 1));
+                    else
+                        setHeadAttributes(new String(auxBuffer));
+
                     this.parsingSection = ParsingSection.HEADER;
-                    this.request = true;
-                    setHeadAttributes(messageString);
-                } else if (HttpParser.headReadyResponse(messageString)) {
-                    this.parsingSection = ParsingSection.HEADER;
-                    this.response = true;
-                    setHeadAttributes(messageString);
-                } else  {
-                    break;
-                }
-            case HEADER:
-                if (HttpParser.headersReady(messageString)) {
-                    /**
-                     * The first split is to get only whats on the headers and avoid the body
-                     * The second split is to get each header separately
-                     */
-                    String stringHeaders[] = (messageString.split("\r\n\r\n")[0]).split("\r\n");
-                    for (int i = 1; i < stringHeaders.length; i++) {
-                        /**
-                         * That space is needed for the long parser to work afterwards
-                         */
-                        String headersContent[] = stringHeaders[i].split(": ");
-                        headers.put(headersContent[0], headersContent[1]);
+
+                    if (!message.hasRemaining()) {
+                        message.rewind();
+                        message.compact();
+                        return;
                     }
-                    String length = headers.get("Content-Length");
-                    if (length == null) {
-                        this.messageReady = true;
-                        break;
+
+                case HEADER:
+
+                    do {
+                        i = 0;
+                        while (message.hasRemaining()) {
+                            if ( (b = message.get()) != '\n')
+                                auxBuffer[i++] = b;
+                            else {
+                                if (i == 0 || i == 1) // case \r\n => 1 and \n => 0
+                                    this.parsingSection = ParsingSection.BODY;
+                                break;
+                            }
+                        }
+
+                        if (i > 1) { // last case
+                            if (auxBuffer[i - 1] == '\r')
+                                setHeaders(new String(auxBuffer, 0, i - 1));
+                            else
+                                setHeaders(new String(auxBuffer));
+                        }
+                    } while (i > 1); // if is 1 it reached \r\n line
+
+                    if (this.parsingSection != ParsingSection.BODY) {
+                        message.rewind();
+                        message.compact();
+                        return;
                     }
-                    this.parsingSection = ParsingSection.BODY;
-                }
-            case BODY:
-                this.bodyLengthRead = messageString.split("\r\n\r\n")[1].length();
-                if (HttpParser.bodyReady(headers.get("Content-Length"), this.bodyLengthRead)) {
+
+                case BODY:
+                    this.contentType = headers.get("Content-Type");
+                    while (message.hasRemaining() && (b = message.get()) != -1)
+                        ; // TODO -- Here it should be the converter
+                    message.rewind();
                     this.messageReady = true;
-                }
-                break;
-            default:
-                break;
+            }
         }
     }
 
@@ -114,6 +130,17 @@ public class HttpMessage {
         } else if (this.response) {
             this.statusCode = headAttributes[1];
             this.statusMsg = headAttributes[2];
+        }
+    }
+
+    private void setHeaders(String string) {
+        String stringHeaders[] = string.split(" ");
+        for (int i = 1; i < stringHeaders.length; i++) {
+            /**
+             * That space is needed for the long parser to work afterwards
+             */
+            String headersContent[] = stringHeaders[i].split(": ");
+            headers.put(headersContent[0], headersContent[1]);
         }
     }
 
