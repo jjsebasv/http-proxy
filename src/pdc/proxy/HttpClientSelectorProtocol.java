@@ -10,19 +10,22 @@ import java.nio.ByteBuffer;
 import java.nio.channels.*;
 
 import nio.TCPProtocol;
+import pdc.config.ProxyConfiguration;
 import pdc.logger.HttpProxyLogger;
 
 public class HttpClientSelectorProtocol implements TCPProtocol {
     private int bufferSize;
     private ServerSocketChannel channel;
     private HttpProxyLogger logger;
+    private ProxyConfiguration proxyConfiguration;
 
     //not delete this variables because we need them for logs
     private String host;
     private int port;
 
-	public HttpClientSelectorProtocol(String host, int port, Selector selector, int bufferSize) throws IOException {
-		this.bufferSize = bufferSize;
+	public HttpClientSelectorProtocol(String host, int port, Selector selector) throws IOException {
+        proxyConfiguration = ProxyConfiguration.getInstance();
+		this.bufferSize = Integer.parseInt(proxyConfiguration.getProperty("buffer_size"));
         this.port = port;
         this.host = host;
         InetSocketAddress listenAddress = new InetSocketAddress(host, port);
@@ -70,7 +73,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
         SocketAddress remoteAddress = socket.getRemoteSocketAddress();
         SocketAddress localAddress = socket.getLocalSocketAddress();
-        if (HttpServerSelector.isVerbose()) {
+        if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
             System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
         }
         this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
@@ -97,7 +100,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         bytesRead = keyChannel.read(connection.buffer);
 
         if (bytesRead == -1) {
-            logger.debug("Error while reading from channel");
+            logger.debug("Error while reading from channel " + connection.getServerUrl());
             keyChannel.close();
             key.cancel();
         } else if( bytesRead > 0) {
@@ -109,11 +112,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             String stringRead = new String(data, "UTF-8");
 
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
-
-            if(HttpServerSelector.isVerbose()) {
-                //System.out.println(side + " wrote: " + stringRead);
-            }
-            //connection.request = new Request(stringRead);
 
             connection.getHttpMessage().setMessageBuffer(connection.buffer);
         } else {
@@ -132,7 +130,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
         channel.socket().setSendBufferSize(this.bufferSize);
 
-        if (HttpServerSelector.isVerbose())
+        if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
             System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
 
         try {
@@ -140,7 +138,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 connection.setServerChannel(serverChannel);
             }
 
-            if (HttpServerSelector.isVerbose())
+            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
                 System.out.println("buffer has: " + writeBuffer.remaining() + " remaining bytes");
 
             if (!writeBuffer.hasRemaining()) {
@@ -188,7 +186,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
      */
     private void sendToClient(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        if (HttpServerSelector.isVerbose()) {
+        if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
             System.out.println("proxy is writing to client the string: " + connection.getHttpMessage().getMessage());
         }
         writeInChannel(key, connection.getClientChannel());

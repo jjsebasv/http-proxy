@@ -5,3 +5,5 @@ out/*
 .project
 .DS_Store
 target/
+.idea/misc.xml
+.idea/workspace.xml

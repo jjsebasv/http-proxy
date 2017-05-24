@@ -7,23 +7,31 @@ import java.nio.channels.Selector;
 import java.util.Iterator;
 
 import nio.TCPProtocol;
+import pdc.config.ProxyConfiguration;
+import pdc.logger.HttpProxyLogger;
 
 
 public class HttpServerSelector {
 
     public static void main(String[] args) throws IOException {
-    	System.out.println("Initializing proxy server");
+
+        ProxyConfiguration proxyConfiguration = ProxyConfiguration.getInstance();
+        boolean verbose = Boolean.valueOf(proxyConfiguration.getProperty("verbose"));
+        String proxyHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
+        int proxyPort = Integer.parseInt(proxyConfiguration.getProperty("proxy_port"));
+
+        if(verbose) {
+            System.out.println("Initializing proxy server");
+        }
+        HttpProxyLogger.getInstance().info("Initializing proxy server");
 
         Selector selector = Selector.open();
 
-        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(Config.getProxyHost(), Config.getProxyPort(), selector, Config.getBufferSize());
+        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(proxyHost, proxyPort, selector);
 
         while (true) {
 
-        	if (selector.select(Config.getTIMEOUT()) == 0) {
-                if (HttpServerSelector.isVerbose()) {
-                	//System.out.println(".");
-                }
+        	if (selector.select(Integer.valueOf(proxyConfiguration.getProperty("selector_timeout"))) == 0) {
                 continue;
             }
 
@@ -47,9 +55,4 @@ public class HttpServerSelector {
             }
         }
     }
-
-	public static boolean isVerbose() {
-		return Config.isVerbose();
-	}
-
 }
