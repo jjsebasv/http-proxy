@@ -9,9 +9,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by nowi on 5/22/17.
- */
+
 public class HttpMessage {
 
     private StringBuilder message;
@@ -28,6 +26,7 @@ public class HttpMessage {
     // Head attributes
     private String method;
     private String url;
+    private String path;
     private String version;
 
     private String statusCode;
@@ -36,6 +35,7 @@ public class HttpMessage {
     // Request Response
     private boolean request;
     private boolean response;
+    private String msgString;
 
     public HttpMessage() {
         this.message = new StringBuilder();
@@ -53,7 +53,7 @@ public class HttpMessage {
 
     public void setMessageBuffer(ByteBuffer message) {
         CharBuffer messageBuffer = Charset.forName("UTF-8").decode(message);
-        String messageString = messageBuffer.toString();
+        msgString = messageBuffer.toString();
 
         byte[] auxBuffer = ByteBuffer.allocate(message.capacity()).array();
         message.flip();
@@ -123,17 +123,29 @@ public class HttpMessage {
         }
     }
 
-    public void appendMessage(String string) {
-
-    }
 
     private void setHeadAttributes(String message) {
         String headAttributes[] = message.split("\r\n")[0].split(" ");
         if (this.request = HttpParser.isRequest(message)) {
             this.method = headAttributes[0];
+            int i;
+
+            String[] aux;
+            if(headAttributes[1].startsWith("http")) {
+                headAttributes[1] = headAttributes[1].substring(headAttributes[1].indexOf("://")+3);
+            }
+            aux = headAttributes[1].split("/",1);
+            if(aux.length > 1) {
+                this.path = aux[1];
+            } else {
+                this.path = "";
+            }
+/*
+            String relative = headAttributes[1];
             this.url = headAttributes[1].split("://")[1];
             if (this.url.endsWith("/"))
                 this.url = this.url.substring(0, this.url.length() -1);
+*/
             this.version = headAttributes[2];
         } else if (this.response = HttpParser.isResponse(message)) {
             this.statusCode = headAttributes[1];
@@ -144,17 +156,17 @@ public class HttpMessage {
     private void setHeaders(String string) {
         //FIXME -- RFC to this
         String stringHeaders[] = string.split(": ");
+        if(stringHeaders.length != 2) {
+            System.out.println(stringHeaders.length);
+            //FIXME -- this is a negrada
+            return;
+        }
         headers.put(stringHeaders[0], stringHeaders[1]);
-    }
-
-    public void resetMessage() {
-        this.message = new StringBuilder();
-        /*
-        this.parsingSection = ParsingSection.HEAD;
-        this.messageReady = false;
-        this.headers = new HashMap<>();
-        this.setBodyLengthRead(0);
-        */
+        if(stringHeaders[0].toLowerCase().equals("host")) {
+            this.url = stringHeaders[1] + "/" + this.path;
+            if (this.url.endsWith("/"))
+                this.url = this.url.substring(0, this.url.length() -1);
+        }
     }
 
     public StringBuilder getMessage() {
