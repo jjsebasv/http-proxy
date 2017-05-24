@@ -58,7 +58,6 @@ public class HttpMessage {
                     this.response = true;
                     setHeadAttributes();
                 }
-                break;
             case HEADER:
                 if (HttpParser.headersReady(this.message.toString())) {
                     /**

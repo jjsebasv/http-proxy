@@ -95,10 +95,13 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
             // TODO -- Add Metrics of bytes read here
 
-            byte[] data = new byte[bytesRead];
-            System.arraycopy((connection.buffer).array(), 0, data, 0, bytesRead);
-            String stringRead = new String(data, "UTF-8");
 
+            byte[] data = new byte[bytesRead];
+            System.arraycopy(connection.buffer.array(), 0, data, 0, bytesRead);
+            String stringRead = new String(data, "UTF-8");
+            
+            if(HttpServerSelector.isVerbose())
+            	System.out.println(side + " wrote: " + stringRead);
             //connection.request = new Request(stringRead);
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
             connection.getHttpMessage().appendMessage(stringRead);
