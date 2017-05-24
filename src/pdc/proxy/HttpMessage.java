@@ -52,7 +52,6 @@ public class HttpMessage {
     }
 
     public void setMessageBuffer(ByteBuffer message) {
-
         CharBuffer messageBuffer = Charset.forName("UTF-8").decode(message);
         String messageString = messageBuffer.toString();
 
