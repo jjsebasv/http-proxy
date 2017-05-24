@@ -35,7 +35,7 @@ public class HttpMessage {
         this.message = new StringBuilder();
         this.parsingSection = ParsingSection.HEAD;
         this.messageReady = false;
-        this.headers = new HashMap<>();
+        this.headers = new HashMap<String, String>();
         this.setBodyLengthRead(0);
         this.request = false;
         this.response = false;

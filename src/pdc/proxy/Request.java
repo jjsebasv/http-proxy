@@ -17,7 +17,7 @@ public class Request {
     private String requestBody;
 
     public Request (String requestString) {
-        this.headers = new HashMap<>();
+        this.headers = new HashMap<String, String>();
         String requestSections[] = requestString.split("\r\n\r\n", 2);
         String requestHead = requestSections[0];
 

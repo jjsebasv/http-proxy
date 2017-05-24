@@ -13,13 +13,12 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
 import nio.TCPProtocol;
+import pdc.logger.HttpProxyLogger;
 
 public class HttpClientSelectorProtocol implements TCPProtocol {
-    private ConcurrentHashMap<SocketChannel, ProxyConnection> proxyToClientChannelMap = new ConcurrentHashMap<SocketChannel, ProxyConnection>();
     private int bufferSize;
-
-    private InetSocketAddress listenAddress;
     private ServerSocketChannel channel;
+    private HttpProxyLogger logger;
 
     //not delete this variables because we need them for logs
     private String host;
@@ -29,11 +28,13 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 		this.bufferSize = bufferSize;
         this.port = port;
         this.host = host;
-		listenAddress = new InetSocketAddress(host, port);
+        InetSocketAddress listenAddress = new InetSocketAddress(host, port);
         channel = ServerSocketChannel.open();
-        channel.configureBlocking(false);
         channel.socket().bind(listenAddress);
+        channel.configureBlocking(false);
         channel.register(selector, SelectionKey.OP_ACCEPT);
+        logger = HttpProxyLogger.getInstance();
+        logger.info("Client proxy started");
 	}
 	
 	public ServerSocketChannel getChannel() {
@@ -84,13 +85,10 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         connection.buffer = ByteBuffer.allocate(bufferSize);
         bytesRead = keyChannel.read(connection.buffer);
 
-        String side = channelIsServerSide(keyChannel) ? "server" : "client";
-        
         if (bytesRead == -1) {
-        	// TODO - LOG
+            logger.debug("Error while reading from channel");
             keyChannel.close();
             key.cancel();
-            return;
         } else if( bytesRead > 0) {
             key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
             // TODO -- Add Metrics of bytes read here
@@ -98,15 +96,13 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             byte[] data = new byte[bytesRead];
             System.arraycopy(connection.buffer.array(), 0, data, 0, bytesRead);
             String stringRead = new String(data, "UTF-8");
-            
-            if(HttpServerSelector.isVerbose())
-            	System.out.println(side + " wrote: " + stringRead);
+
             //connection.request = new Request(stringRead);
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
             connection.getHttpMessage().appendMessage(stringRead);
         } else {
-            // TODO Close Connection
-        	// TODO	LOG ERROR
+            // TODO key channel read the rest?
+            logger.debug("Partial reading");
         }
 	}
 
@@ -143,8 +139,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             handleSendMessage(key);
             key.interestOps(connection.buffer.position() > 0 ? SelectionKey.OP_READ | SelectionKey.OP_WRITE : SelectionKey.OP_READ);
         } catch (IOException e) {
-            // TODO: LOG ERROR
-            System.out.println(e.getStackTrace());
+            logger.error("Error when writing on channel");
         }
     }
 
@@ -164,8 +159,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             SelectionKey serverKey = (connection.getServerChannel()).register(connection.getSelector(), SelectionKey.OP_READ);
             serverKey.attach(connection);
         } catch (Exception e) {
-        	// TODO	LOG ERROR
-            System.out.println(e.getStackTrace());
+            logger.error("Error when writing on channel");
         }
     }
 
@@ -194,7 +188,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
         //System.out.println(connection.getHttpMessage().getMessage());
         if (connection.getHttpMessage().isMessageReady()) {
-            if (channel.equals(connection.getServerChannel())) {
+            if (channelIsServerSide(channel, connection)) {
                 sendToClient(key);
             } else {
                 sendToServer(key);
@@ -208,11 +202,11 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
      * @param channel
      * @return
      */
-    private boolean channelIsServerSide(SocketChannel channel) {
-    	return proxyToClientChannelMap.get(channel) != null; 
+    private boolean channelIsServerSide(SocketChannel channel, ProxyConnection connection) {
+    	return channel.equals(connection.getServerChannel());
     }
 
-	
+
 	/**
      * Write data to a specific channel
      */
@@ -225,11 +219,9 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
     	try {
     	    // TODO -- Add metrics of transfered bytes
-            // TODO -- Log writing to whom
             channel.write(ByteBuffer.wrap(stringRead.getBytes()));
 		} catch (IOException e) {
-		    // TODO -- Log error
-			System.out.println(e.getStackTrace());
+            logger.error("Error when writing on channel");
             System.out.println("Aca error --- " + stringRead);
 		}
 		connection.buffer.clear();

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<property name="USER_HOME" value="e:/var/log/logfiles" />
+	<appender name="FILE" class="ch.qos.logback.core.FileAppender">
+		<file>xmpp-proxy.log</file>
+		<encoder>
+			<Pattern>%date{yy-MMM-dd HH:mm:ss}\t%-5level\t%msg%n</Pattern>
+		</encoder>
+	</appender>
+	<logger name="LogController" level="TRACE"/>
+	<root level="debug">
+		<appender-ref ref="FILE" />
+	</root>
+</configuration>

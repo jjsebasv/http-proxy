@@ -12,7 +12,7 @@ import nio.TCPProtocol;
 public class HttpServerSelector {
 
     public static void main(String[] args) throws IOException {
-    	System.out.println("Initializating proxy server");
+    	System.out.println("Initializing proxy server");
 
         Selector selector = Selector.open();
 
