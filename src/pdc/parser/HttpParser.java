@@ -9,17 +9,17 @@ public class HttpParser {
         return message.contains("\r\n\r\n");
     }
 
-    public static boolean headReady(String message) {
-        return message.contains("\r\n") && (message.startsWith("GET") || message.startsWith("POST") || message.startsWith("OPTIONS") ||
+    public static boolean isRequest(String message) {
+        return message.startsWith("GET") || message.startsWith("POST") || message.startsWith("OPTIONS") ||
                 message.startsWith("HEAD") || message.startsWith("PUT") || message.startsWith("DELETE") || message.startsWith("CONNECT") ||
-                message.startsWith("TRACE") || message.startsWith("PATCH"));
+                message.startsWith("TRACE") || message.startsWith("PATCH");
     }
 
     public static boolean bodyReady(String contentLength, long readLength) {
         return contentLength == null || Long.valueOf(contentLength) <= readLength;
     }
 
-    public static boolean headReadyResponse(String message) {
-        return message.contains("\r\n");
+    public static boolean isResponse(String message) {
+        return message.startsWith("HTTP");
     }
 }

@@ -1,6 +1,4 @@
-.idea/*
-.idea/**
-*.iml
+.idea/
 out/*
 .classpath
 .class

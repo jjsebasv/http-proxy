@@ -108,9 +108,14 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             System.arraycopy(connection.buffer.array(), 0, data, 0, bytesRead);
             String stringRead = new String(data, "UTF-8");
 
-            //connection.request = new Request(stringRead);
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
-            connection.getHttpMessage().appendMessage(stringRead);
+
+            if(HttpServerSelector.isVerbose()) {
+                //System.out.println(side + " wrote: " + stringRead);
+            }
+            //connection.request = new Request(stringRead);
+
+            connection.getHttpMessage().setMessageBuffer(connection.buffer);
         } else {
             // TODO key channel read the rest?
             logger.debug("Partial reading");
@@ -225,17 +230,19 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
      */
     public void writeInChannel(SelectionKey key, SocketChannel channel) {
     	ProxyConnection connection = (ProxyConnection) key.attachment();
+        /*
         String stringRead = connection.getHttpMessage().getMessage().toString();
 
         connection.buffer.clear();
-        
+
         connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
+    	*/
     	try {
     	    // TODO -- Add metrics of transfered bytes
-            channel.write(ByteBuffer.wrap(stringRead.getBytes()));
+            channel.write(connection.buffer);
 		} catch (IOException e) {
             logger.error("Error when writing on channel");
-            System.out.println("Aca error --- " + stringRead);
+            //System.out.println("Aca error --- " + stringRead);
 		}
 		connection.buffer.clear();
     }
