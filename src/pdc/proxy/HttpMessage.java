@@ -53,19 +53,26 @@ public class HttpMessage {
 
     public void setMessageBuffer(ByteBuffer message) {
 
+        CharBuffer messageBuffer = Charset.forName("UTF-8").decode(message);
+        String messageString = messageBuffer.toString();
+
         byte[] auxBuffer = ByteBuffer.allocate(message.capacity()).array();
         message.flip();
-        byte b;
+        byte b = 0;
         int i = 0;
         while (true) {
             switch (this.parsingSection) {
                 case HEAD:
 
-                    while( (b = message.get()) != '\n' && message.hasRemaining() )
+                    while( message.hasRemaining() ){
+                        b = message.get();
                         auxBuffer[i++] = b;
+                        if (b == '\n')
+                            break;
+                    }
 
-                    if( auxBuffer[i-1] == '\r')
-                        setHeadAttributes(new String(auxBuffer, 0, i - 1));
+                    if( auxBuffer[i-2] == '\r')
+                        setHeadAttributes(new String(auxBuffer, 0, i - 2));
                     else
                         setHeadAttributes(new String(auxBuffer));
 
@@ -134,14 +141,8 @@ public class HttpMessage {
     }
 
     private void setHeaders(String string) {
-        String stringHeaders[] = string.split(" ");
-        for (int i = 1; i < stringHeaders.length; i++) {
-            /**
-             * That space is needed for the long parser to work afterwards
-             */
-            String headersContent[] = stringHeaders[i].split(": ");
-            headers.put(headersContent[0], headersContent[1]);
-        }
+        String stringHeaders[] = string.split(": ");
+        headers.put(stringHeaders[0], stringHeaders[1]);
     }
 
     public void resetMessage() {
