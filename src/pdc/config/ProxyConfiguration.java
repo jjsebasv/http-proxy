@@ -31,9 +31,7 @@ public class ProxyConfiguration {
             String current = new java.io.File(".").getCanonicalPath();
             this.file = new File(current + "/src/resources/config.properties");
             //this.file = new File("./config.properties");
-            System.out.print(this.file);
             FileInputStream fis = new FileInputStream(file);
-            System.out.print(fis);
             properties.load(fis);
 
         } catch (Exception e) {

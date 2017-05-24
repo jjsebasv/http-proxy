@@ -1,6 +1,7 @@
 package pdc.proxy;
 
 import com.sun.org.apache.bcel.internal.generic.Select;
+import pdc.config.ProxyConfiguration;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -11,10 +12,17 @@ import java.util.Queue;
 
 public class ProxyConnection {
 
-    Config configFile = new Config();
+    ProxyConfiguration proxyConfiguration = ProxyConfiguration.getInstance();
 
 	private SocketChannel clientChannel;
     private SelectionKey clientKey;
+	private SocketChannel serverChannel;
+	private String serverUrl;
+	private int serverPort;
+	public ByteBuffer buffer;
+	private Selector selector;
+	public Request request;
+	public HttpMessage httpMessage;
 
     public SelectionKey getClientKey() {
         return clientKey;
@@ -24,23 +32,14 @@ public class ProxyConnection {
         this.clientKey = clientKey;
     }
 
-    private SocketChannel serverChannel;
-	private String serverUrl;
-	private int serverPort;
 
-    public ByteBuffer buffer;
-    private Selector selector;
-
-    public Request request;
-    public HttpMessage httpMessage;
-		
 	public ProxyConnection(SocketChannel clientChannel) {
 		this.clientChannel = clientChannel;
 	}
 
 	public ProxyConnection(Selector selector) {
         this.selector = selector;
-        this.buffer = ByteBuffer.wrap(new byte[configFile.getBufferSize()]);
+        this.buffer = ByteBuffer.wrap(new byte[Integer.valueOf(proxyConfiguration.getProperty("buffer_size"))]);
         this.httpMessage = new HttpMessage();
 	}
 
