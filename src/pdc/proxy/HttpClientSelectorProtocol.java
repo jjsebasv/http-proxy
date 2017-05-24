@@ -108,9 +108,14 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             System.arraycopy(connection.buffer.array(), 0, data, 0, bytesRead);
             String stringRead = new String(data, "UTF-8");
 
-            //connection.request = new Request(stringRead);
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
-            connection.getHttpMessage().appendMessage(stringRead);
+
+            if(HttpServerSelector.isVerbose()) {
+                System.out.println(side + " wrote: " + stringRead);
+            }
+            //connection.request = new Request(stringRead);
+
+            connection.getHttpMessage().setMessageBuffer(connection.buffer);
         } else {
             // TODO key channel read the rest?
             logger.debug("Partial reading");

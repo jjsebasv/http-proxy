@@ -3,6 +3,9 @@ package pdc.proxy;
 import pdc.parser.HttpParser;
 import pdc.parser.ParsingSection;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,11 +16,14 @@ public class HttpMessage {
 
     private StringBuilder message;
 
+    private ByteBuffer messageBuffer;
+
     private boolean messageReady;
     private ParsingSection parsingSection;
 
     private Map<String, String> headers;
     private long bodyLengthRead;
+    private String contentType;
 
     // Head attributes
     private String method;
@@ -45,52 +51,83 @@ public class HttpMessage {
         return url;
     }
 
-    public void appendMessage(String string) {
-        this.message.append(string);
-        switch (this.parsingSection) {
-            case HEAD:
-                if (HttpParser.headReady(this.message.toString())) {
-                    this.parsingSection = ParsingSection.HEADER;
-                    this.request = true;
-                    setHeadAttributes();
-                } else if (HttpParser.headReadyResponse(this.message.toString())) {
-                    this.parsingSection = ParsingSection.HEADER;
-                    this.response = true;
-                    setHeadAttributes();
-                }
-            case HEADER:
-                if (HttpParser.headersReady(this.message.toString())) {
-                    /**
-                     * The first split is to get only whats on the headers and avoid the body
-                     * The second split is to get each header separately
-                     */
-                    String stringHeaders[] = (this.message.toString().split("\r\n\r\n")[0]).split("\r\n");
-                    for (int i = 1; i < stringHeaders.length; i++) {
-                        /**
-                         * That space is needed for the long parser to work afterwards
-                         */
-                        String headersContent[] = stringHeaders[i].split(": ");
-                        headers.put(headersContent[0], headersContent[1]);
+    public void setMessageBuffer(ByteBuffer message) {
+
+        CharBuffer messageBuffer = Charset.forName("UTF-8").decode(message);
+        String messageString = messageBuffer.toString();
+
+        byte[] auxBuffer = ByteBuffer.allocate(message.capacity()).array();
+        message.flip();
+        byte b = 0;
+        int i = 0;
+        while (true) {
+            switch (this.parsingSection) {
+                case HEAD:
+
+                    while( message.hasRemaining() ){
+                        b = message.get();
+                        auxBuffer[i++] = b;
+                        if (b == '\n')
+                            break;
                     }
-                    String length = headers.get("Content-Length");
-                    if (length == null)
-                        this.messageReady = true;
-                    this.parsingSection = ParsingSection.BODY;
-                }
-                break;
-            case BODY:
-                this.bodyLengthRead = this.message.toString().split("\r\n\r\n")[1].length();
-                if (HttpParser.bodyReady(headers.get("Content-Length"), this.bodyLengthRead)) {
+
+                    if( auxBuffer[i-2] == '\r')
+                        setHeadAttributes(new String(auxBuffer, 0, i - 2));
+                    else
+                        setHeadAttributes(new String(auxBuffer));
+
+                    this.parsingSection = ParsingSection.HEADER;
+
+                    if (!message.hasRemaining()) {
+                        message.rewind();
+                        message.compact();
+                        return;
+                    }
+
+                case HEADER:
+
+                    do {
+                        i = 0;
+                        while (message.hasRemaining()) {
+                            if ( (b = message.get()) != '\n')
+                                auxBuffer[i++] = b;
+                            else {
+                                if (i == 0 || i == 1) // case \r\n => 1 and \n => 0
+                                    this.parsingSection = ParsingSection.BODY;
+                                break;
+                            }
+                        }
+
+                        if (i > 1) { // last case
+                            if (auxBuffer[i - 1] == '\r')
+                                setHeaders(new String(auxBuffer, 0, i - 1));
+                            else
+                                setHeaders(new String(auxBuffer));
+                        }
+                    } while (i > 1); // if is 1 it reached \r\n line
+
+                    if (this.parsingSection != ParsingSection.BODY) {
+                        message.rewind();
+                        message.compact();
+                        return;
+                    }
+
+                case BODY:
+                    this.contentType = headers.get("Content-Type");
+                    while (message.hasRemaining() && (b = message.get()) != -1)
+                        ; // TODO -- Here it should be the converter
+                    message.rewind();
                     this.messageReady = true;
-                }
-                break;
-            default:
-                break;
+            }
         }
     }
 
-    private void setHeadAttributes() {
-        String headAttributes[] = this.message.toString().split("\r\n")[0].split(" ");
+    public void appendMessage(String string) {
+
+    }
+
+    private void setHeadAttributes(String message) {
+        String headAttributes[] = message.split("\r\n")[0].split(" ");
         if (this.request) {
             this.method = headAttributes[0];
             this.url = headAttributes[1].split("://")[1];
@@ -101,6 +138,11 @@ public class HttpMessage {
             this.statusCode = headAttributes[1];
             this.statusMsg = headAttributes[2];
         }
+    }
+
+    private void setHeaders(String string) {
+        String stringHeaders[] = string.split(": ");
+        headers.put(stringHeaders[0], stringHeaders[1]);
     }
 
     public void resetMessage() {
@@ -115,10 +157,6 @@ public class HttpMessage {
 
     public StringBuilder getMessage() {
         return message;
-    }
-
-    public void setMessage(StringBuilder message) {
-        this.message = message;
     }
 
     public boolean isMessageReady() {
