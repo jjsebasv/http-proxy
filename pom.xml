@@ -1,11 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>ar.edu.itba.protos</groupId>
-  <artifactId>xmpp-proxy-server</artifactId>
+  <groupId>pdc</groupId>
+  <artifactId>http-proxy-server</artifactId>
   <packaging>jar</packaging>
   <version>1.0-SNAPSHOT</version>
-  <name>xmpp-proxy-server</name>
+  <name>http-proxy-server</name>
   <url>http://maven.apache.org</url>
   <dependencies>
 	<dependency>
@@ -75,7 +75,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>ar.edu.itba.proxy.MainProxy</mainClass>
+                            <mainClass>pdc.proxy.HttpServerSelector</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

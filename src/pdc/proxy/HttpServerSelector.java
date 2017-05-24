@@ -22,7 +22,7 @@ public class HttpServerSelector {
 
         	if (selector.select(Config.getTIMEOUT()) == 0) {
                 if (HttpServerSelector.isVerbose()) {
-                	System.out.print(".");
+                	//System.out.println(".");
                 }
                 continue;
             }
@@ -37,12 +37,10 @@ public class HttpServerSelector {
                 }
 
                 if (key.isReadable()) {
-                	System.out.println("------- READ");
                 	HttpClientSelectorProtocol.handleRead(key);
                 }
 
                 if (key.isValid() && key.isWritable()) {
-                	System.out.println("------- WRITE");
                 	HttpClientSelectorProtocol.handleWrite(key);
                 }
                 keyIter.remove();

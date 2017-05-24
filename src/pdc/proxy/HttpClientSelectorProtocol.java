@@ -7,11 +7,8 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.ConcurrentHashMap;
+import java.nio.channels.*;
+
 import nio.TCPProtocol;
 import pdc.logger.HttpProxyLogger;
 
@@ -47,29 +44,43 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	
 	/**
      * Accept connections to HTTP Proxy
-     * @param key
+     * @param key connection
      * @throws IOException
      */
-    public void handleAccept(SelectionKey key) throws IOException {
+    public void handleAccept(SelectionKey key) {
         ProxyConnection connection = new ProxyConnection(key.selector());
 
         ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
-        SocketChannel newChannel = keyChannel.accept();
+        SocketChannel newChannel = null;
+        try {
+            newChannel = keyChannel.accept();
+        } catch (IOException e) {
+            this.logger.error("Cannot accept a connection to the proxy");
+        }
         Socket socket = newChannel.socket();
 
-        newChannel.configureBlocking(false);
+        try {
+            newChannel.configureBlocking(false);
+        } catch (IOException e) {
+            this.logger.error("Cannot configure the channel as non blocking");
+        }
 
         connection.setClientChannel(newChannel);
         connection.setClientKey(key);
 
+        SocketAddress remoteAddress = socket.getRemoteSocketAddress();
+        SocketAddress localAddress = socket.getLocalSocketAddress();
         if (HttpServerSelector.isVerbose()) {
-            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-            SocketAddress localAddr = socket.getLocalSocketAddress();
-            System.out.println("Accepted new client connection from " + localAddr + " to " + remoteAddr);
+            System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
         }
+        this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
 
-        SelectionKey clientKey = newChannel.register(key.selector(), SelectionKey.OP_READ | SelectionKey.OP_WRITE, connection);
-        clientKey.attach(connection);
+        try {
+            SelectionKey clientKey = newChannel.register(key.selector(), SelectionKey.OP_READ | SelectionKey.OP_WRITE, connection);
+            clientKey.attach(connection);
+        } catch (ClosedChannelException e) {
+            this.logger.error("Closed channel " + newChannel.toString());
+        }
     }
 
 	/**
@@ -150,6 +161,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 getRemoteServerUrl(connection);
                 InetSocketAddress hostAddress = new InetSocketAddress(connection.getServerUrl(), connection.getServerPort());
                 SocketChannel serverChannel = SocketChannel.open(hostAddress);
+                logger.info("Connecting proxy to: " + connection.getServerUrl());
                 connection.setServerChannel(serverChannel);
             }
 
@@ -158,6 +170,8 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
             SelectionKey serverKey = (connection.getServerChannel()).register(connection.getSelector(), SelectionKey.OP_READ);
             serverKey.attach(connection);
+        } catch (UnresolvedAddressException e) {
+            logger.error("Unresolved host: " + connection.getServerUrl());
         } catch (Exception e) {
             logger.error("Error when writing on channel");
         }
@@ -186,7 +200,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
 
-        //System.out.println(connection.getHttpMessage().getMessage());
         if (connection.getHttpMessage().isMessageReady()) {
             if (channelIsServerSide(channel, connection)) {
                 sendToClient(key);
@@ -233,6 +246,4 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     	connection.setServerUrl(r.getUrl());
     	connection.setServerPort(80);
 	}
-
-
 }

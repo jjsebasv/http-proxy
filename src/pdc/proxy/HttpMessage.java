@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by sebastian on 5/22/17.
+ * Created by nowi on 5/22/17.
  */
 public class HttpMessage {
 
