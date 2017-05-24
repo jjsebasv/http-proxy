@@ -1,11 +1,4 @@
-.idea/*
-<<<<<<< eb9f4aa1805fff79214d5f2b6a91528168b24ccd
-.idea
-=======
-.idea/**
-*.iml
-*/*.iml
->>>>>>> gitignore
+.idea/
 out/*
 .classpath
 .class

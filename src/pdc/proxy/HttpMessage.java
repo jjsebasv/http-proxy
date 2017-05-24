@@ -108,6 +108,7 @@ public class HttpMessage {
                     if (this.parsingSection != ParsingSection.BODY) {
                         message.rewind();
                         message.compact();
+                        //this.messageReady = true;
                         return;
                     }
 
@@ -117,6 +118,7 @@ public class HttpMessage {
                         ; // TODO -- Here it should be the converter
                     message.rewind();
                     this.messageReady = true;
+                    return;
             }
         }
     }
@@ -127,19 +129,20 @@ public class HttpMessage {
 
     private void setHeadAttributes(String message) {
         String headAttributes[] = message.split("\r\n")[0].split(" ");
-        if (this.request) {
+        if (this.request = HttpParser.isRequest(message)) {
             this.method = headAttributes[0];
             this.url = headAttributes[1].split("://")[1];
             if (this.url.endsWith("/"))
                 this.url = this.url.substring(0, this.url.length() -1);
             this.version = headAttributes[2];
-        } else if (this.response) {
+        } else if (this.response = HttpParser.isResponse(message)) {
             this.statusCode = headAttributes[1];
             this.statusMsg = headAttributes[2];
         }
     }
 
     private void setHeaders(String string) {
+        //FIXME -- RFC to this
         String stringHeaders[] = string.split(": ");
         headers.put(stringHeaders[0], stringHeaders[1]);
     }

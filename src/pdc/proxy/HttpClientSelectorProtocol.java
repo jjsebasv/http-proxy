@@ -111,7 +111,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
 
             if(HttpServerSelector.isVerbose()) {
-                System.out.println(side + " wrote: " + stringRead);
+                //System.out.println(side + " wrote: " + stringRead);
             }
             //connection.request = new Request(stringRead);
 
@@ -230,17 +230,19 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
      */
     public void writeInChannel(SelectionKey key, SocketChannel channel) {
     	ProxyConnection connection = (ProxyConnection) key.attachment();
+        /*
         String stringRead = connection.getHttpMessage().getMessage().toString();
 
         connection.buffer.clear();
-        
+
         connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
+    	*/
     	try {
     	    // TODO -- Add metrics of transfered bytes
-            channel.write(ByteBuffer.wrap(stringRead.getBytes()));
+            channel.write(connection.buffer);
 		} catch (IOException e) {
             logger.error("Error when writing on channel");
-            System.out.println("Aca error --- " + stringRead);
+            //System.out.println("Aca error --- " + stringRead);
 		}
 		connection.buffer.clear();
     }
