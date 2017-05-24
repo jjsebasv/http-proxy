@@ -95,7 +95,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
             // TODO -- Add Metrics of bytes read here
 
-
             byte[] data = new byte[bytesRead];
             System.arraycopy(connection.buffer.array(), 0, data, 0, bytesRead);
             String stringRead = new String(data, "UTF-8");
@@ -195,7 +194,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
         //System.out.println(connection.getHttpMessage().getMessage());
         if (connection.getHttpMessage().isMessageReady()) {
-            if (channel == connection.getServerChannel()) {
+            if (channel.equals(connection.getServerChannel())) {
                 sendToClient(key);
             } else {
                 sendToServer(key);
@@ -222,11 +221,12 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         String stringRead = connection.getHttpMessage().getMessage().toString();
 
         connection.buffer.clear();
+        
         connection.buffer = ByteBuffer.wrap(stringRead.getBytes());
     	try {
     	    // TODO -- Add metrics of transfered bytes
             // TODO -- Log writing to whom
-            channel.write(connection.buffer);
+            channel.write(ByteBuffer.wrap(stringRead.getBytes()));
 		} catch (IOException e) {
 		    // TODO -- Log error
 			System.out.println(e.getStackTrace());
