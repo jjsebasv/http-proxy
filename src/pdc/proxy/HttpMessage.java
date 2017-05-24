@@ -3,6 +3,9 @@ package pdc.proxy;
 import pdc.parser.HttpParser;
 import pdc.parser.ParsingSection;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +15,8 @@ import java.util.Map;
 public class HttpMessage {
 
     private StringBuilder message;
+
+    private ByteBuffer messageBuffer;
 
     private boolean messageReady;
     private ParsingSection parsingSection;
@@ -45,26 +50,30 @@ public class HttpMessage {
         return url;
     }
 
-    public void appendMessage(String string) {
-        this.message.append(string);
+    public void setMessageBuffer(ByteBuffer message) {
+        this.messageBuffer = message;
+        CharBuffer messageBuffer = Charset.forName("UTF-8").decode(message);
+        String messageString = messageBuffer.toString();
         switch (this.parsingSection) {
             case HEAD:
-                if (HttpParser.headReady(this.message.toString())) {
+                if (HttpParser.headReady(messageString)) {
                     this.parsingSection = ParsingSection.HEADER;
                     this.request = true;
-                    setHeadAttributes();
-                } else if (HttpParser.headReadyResponse(this.message.toString())) {
+                    setHeadAttributes(messageString);
+                } else if (HttpParser.headReadyResponse(messageString)) {
                     this.parsingSection = ParsingSection.HEADER;
                     this.response = true;
-                    setHeadAttributes();
+                    setHeadAttributes(messageString);
+                } else  {
+                    break;
                 }
             case HEADER:
-                if (HttpParser.headersReady(this.message.toString())) {
+                if (HttpParser.headersReady(messageString)) {
                     /**
                      * The first split is to get only whats on the headers and avoid the body
                      * The second split is to get each header separately
                      */
-                    String stringHeaders[] = (this.message.toString().split("\r\n\r\n")[0]).split("\r\n");
+                    String stringHeaders[] = (messageString.split("\r\n\r\n")[0]).split("\r\n");
                     for (int i = 1; i < stringHeaders.length; i++) {
                         /**
                          * That space is needed for the long parser to work afterwards
@@ -73,13 +82,14 @@ public class HttpMessage {
                         headers.put(headersContent[0], headersContent[1]);
                     }
                     String length = headers.get("Content-Length");
-                    if (length == null)
+                    if (length == null) {
                         this.messageReady = true;
+                        break;
+                    }
                     this.parsingSection = ParsingSection.BODY;
                 }
-                break;
             case BODY:
-                this.bodyLengthRead = this.message.toString().split("\r\n\r\n")[1].length();
+                this.bodyLengthRead = messageString.split("\r\n\r\n")[1].length();
                 if (HttpParser.bodyReady(headers.get("Content-Length"), this.bodyLengthRead)) {
                     this.messageReady = true;
                 }
@@ -89,8 +99,12 @@ public class HttpMessage {
         }
     }
 
-    private void setHeadAttributes() {
-        String headAttributes[] = this.message.toString().split("\r\n")[0].split(" ");
+    public void appendMessage(String string) {
+
+    }
+
+    private void setHeadAttributes(String message) {
+        String headAttributes[] = message.split("\r\n")[0].split(" ");
         if (this.request) {
             this.method = headAttributes[0];
             this.url = headAttributes[1].split("://")[1];
@@ -115,10 +129,6 @@ public class HttpMessage {
 
     public StringBuilder getMessage() {
         return message;
-    }
-
-    public void setMessage(StringBuilder message) {
-        this.message = message;
     }
 
     public boolean isMessageReady() {
