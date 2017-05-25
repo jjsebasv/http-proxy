@@ -1,13 +1,17 @@
 package pdc.proxy;
 
 import pdc.parser.HttpParser;
+import pdc.parser.ParsingHeaderSection;
 import pdc.parser.ParsingSection;
+import pdc.parser.ParsingStatus;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 
 /**
  * Created by nowi on 5/22/17.
@@ -15,181 +19,158 @@ import java.util.Map;
 public class HttpMessage {
 
     private StringBuilder message;
-
-    private ByteBuffer messageBuffer;
-
-    private boolean messageReady;
     private ParsingSection parsingSection;
-
+    private ParsingStatus parsingStatus;
     private Map<String, String> headers;
-    private long bodyLengthRead;
-    private String contentType;
-
-    // Head attributes
-    private String method;
-    private String url;
-    private String version;
-
-    private String statusCode;
-    private String statusMsg;
-
-    // Request Response
-    private boolean request;
-    private boolean response;
+    private int spaceCount;
+    private ParsingHeaderSection parsingHeaderSection;
+    private StringBuffer headerLine;
+    private StringBuffer method;
+    private StringBuffer status;
 
     public HttpMessage() {
-        this.message = new StringBuilder();
+        this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
-        this.messageReady = false;
+        this.message = new StringBuilder();
         this.headers = new HashMap<String, String>();
-        this.setBodyLengthRead(0);
-        this.request = false;
-        this.response = false;
+        headerLine = new StringBuffer();
+        spaceCount = 0;
+        method =  new StringBuffer();
+        status = new StringBuffer();
+        parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
     }
 
-    public String getUrl() {
-        return url;
+
+    public void readRequest(ByteBuffer message) {
+        CharBuffer charBuffer = Charset.forName("ISO-8859-1").decode(message);
+        for (char c: charBuffer.array()) {
+            parseRequest(c);
+        }
     }
 
-    public void setMessageBuffer(ByteBuffer message) {
-        CharBuffer messageBuffer = Charset.forName("UTF-8").decode(message);
-        String messageString = messageBuffer.toString();
-
-        byte[] auxBuffer = ByteBuffer.allocate(message.capacity()).array();
-        message.flip();
-        byte b = 0;
-        int i = 0;
-        while (true) {
-            switch (this.parsingSection) {
-                case HEAD:
-
-                    while( message.hasRemaining() ){
-                        b = message.get();
-                        auxBuffer[i++] = b;
-                        if (b == '\n')
-                            break;
+    private void parseRequest (char b) {
+        switch (parsingSection) {
+            case HEAD:
+                if (spaceCount == 0) {
+                    if (b != ' ') {
+                        this.method.append(b);
+                    } else {
+                        spaceCount++;
                     }
-
-                    if( auxBuffer[i-2] == '\r')
-                        setHeadAttributes(new String(auxBuffer, 0, i - 2));
-                    else
-                        setHeadAttributes(new String(auxBuffer));
-
-                    this.parsingSection = ParsingSection.HEADER;
-
-                    if (!message.hasRemaining()) {
-                        message.rewind();
-                        message.compact();
-                        return;
+                } else {
+                    if (b == '\n') {
+                        this.parsingSection = ParsingSection.HEADERS;
                     }
-
-                case HEADER:
-
-                    do {
-                        i = 0;
-                        while (message.hasRemaining()) {
-                            if ( (b = message.get()) != '\n')
-                                auxBuffer[i++] = b;
-                            else {
-                                if (i == 0 || i == 1) // case \r\n => 1 and \n => 0
-                                    this.parsingSection = ParsingSection.BODY;
-                                break;
+                }
+                break;
+            case HEADERS:
+                switch (parsingHeaderSection) {
+                    case START_HEADER_LINE:
+                        if (b != '\n' && b != '\r') {
+                            this.headerLine.append(b);
+                        } else if (b == '\r') {
+                            if (this.headerLine.length() == 0) {
+                                this.parsingHeaderSection = ParsingHeaderSection.END_HEADERS_SECTION;
+                            } else {
+                                this.parsingHeaderSection = ParsingHeaderSection.END_HEADER_LINE;
                             }
                         }
-
-                        if (i > 1) { // last case
-                            if (auxBuffer[i - 1] == '\r')
-                                setHeaders(new String(auxBuffer, 0, i - 1));
-                            else
-                                setHeaders(new String(auxBuffer));
+                        break;
+                    case END_HEADER_LINE:
+                        if (b == '\n') {
+                            saveHeader(this.headerLine);
+                            this.parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
+                            this.headerLine = new StringBuffer();
                         }
-                    } while (i > 1); // if is 1 it reached \r\n line
+                        break;
+                    case END_HEADERS_SECTION:
+                        if (b == '\n') {
+                            this.parsingSection = ParsingSection.BODY;
+                            if (!headers.containsKey("Content-Length")) {
+                                this.parsingStatus = ParsingStatus.FINISH;
+                            }
+                        }
+                        break;
+                }
+                break;
+            case BODY:
+                break;
 
-                    if (this.parsingSection != ParsingSection.BODY) {
-                        message.rewind();
-                        message.compact();
-                        //this.messageReady = true;
-                        return;
-                    }
-
-                case BODY:
-                    this.contentType = headers.get("Content-Type");
-                    while (message.hasRemaining() && (b = message.get()) != -1)
-                        ; // TODO -- Here it should be the converter
-                    message.rewind();
-                    this.messageReady = true;
-                    return;
-            }
         }
     }
 
-    public void appendMessage(String string) {
-
-    }
-
-    private void setHeadAttributes(String message) {
-        String headAttributes[] = message.split("\r\n")[0].split(" ");
-        if (this.request = HttpParser.isRequest(message)) {
-            this.method = headAttributes[0];
-            this.url = headAttributes[1].split("://")[1];
-            if (this.url.endsWith("/"))
-                this.url = this.url.substring(0, this.url.length() -1);
-            this.version = headAttributes[2];
-        } else if (this.response = HttpParser.isResponse(message)) {
-            this.statusCode = headAttributes[1];
-            this.statusMsg = headAttributes[2];
-        }
-    }
-
-    private void setHeaders(String string) {
-        //FIXME -- RFC to this
+    private void saveHeader(StringBuffer stringBuffer) {
+        String string = stringBuffer.toString();
         String stringHeaders[] = string.split(": ");
-        headers.put(stringHeaders[0], stringHeaders[1]);
+        this.headers.put(stringHeaders[0], stringHeaders[1]);
     }
 
-    public void resetMessage() {
-        this.message = new StringBuilder();
-        /*
-        this.parsingSection = ParsingSection.HEAD;
-        this.messageReady = false;
-        this.headers = new HashMap<>();
-        this.setBodyLengthRead(0);
-        */
+    public void readResponse (ByteBuffer message) {
+        CharBuffer charBuffer = Charset.forName("ISO-8859-1").decode(message);
+        for (char c: charBuffer.array()) {
+            parseResponse(c);
+        }
+    }
+
+    private void parseResponse(char b) {
+        switch (parsingSection) {
+            case HEAD:
+                if (spaceCount == 0) {
+                    if (b != ' ') {
+                        this.status.append(b);
+                    } else {
+                        spaceCount++;
+                    }
+                } else {
+                    if (b == '\n') {
+                        this.parsingSection = ParsingSection.HEADERS;
+                    }
+                }
+                break;
+            case HEADERS:
+                switch (parsingHeaderSection) {
+                    case START_HEADER_LINE:
+                        if (b != '\n' && b != '\r') {
+                            this.headerLine.append(b);
+                        } else if (b == '\r') {
+                            if (this.headerLine.length() == 0) {
+                                this.parsingHeaderSection = ParsingHeaderSection.END_HEADERS_SECTION;
+                            } else {
+                                this.parsingHeaderSection = ParsingHeaderSection.END_HEADER_LINE;
+                            }
+                        }
+                        break;
+                    case END_HEADER_LINE:
+                        if (b == '\n') {
+                            saveHeader(this.headerLine);
+                            this.parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
+                            this.headerLine = new StringBuffer();
+                        }
+                        break;
+                    case END_HEADERS_SECTION:
+                        if (b == '\n') {
+                            this.parsingSection = ParsingSection.BODY;
+                            if (!headers.containsKey("Content-Length")) {
+                                this.parsingStatus = ParsingStatus.FINISH;
+                            }
+                        }
+                        break;
+                }
+                break;
+            case BODY:
+                break;
+        }
+    }
+
+    public ParsingStatus getParsingStatus() {
+        return this.parsingStatus;
+    }
+
+    public Map<String, String> getHaders() {
+        return this.headers;
     }
 
     public StringBuilder getMessage() {
-        return message;
-    }
-
-    public boolean isMessageReady() {
-        return messageReady;
-    }
-
-    public void setMessageReady(boolean messageReady) {
-        this.messageReady = messageReady;
-    }
-
-    public ParsingSection getParsingSection() {
-        return parsingSection;
-    }
-
-    public void setParsingSection(ParsingSection parsingSection) {
-        this.parsingSection = parsingSection;
-    }
-
-    public Map<String, String> getHeaders() {
-        return headers;
-    }
-
-    public void setHeaders(Map<String, String> headers) {
-        this.headers = headers;
-    }
-
-    public long getBodyLengthRead() {
-        return bodyLengthRead;
-    }
-
-    public void setBodyLengthRead(long bodyLengthRead) {
-        this.bodyLengthRead = bodyLengthRead;
+        return this.message;
     }
 }

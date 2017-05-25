@@ -5,6 +5,6 @@ package pdc.parser;
  */
 public enum ParsingSection {
     HEAD,
-    HEADER,
+    HEADERS,
     BODY
 }
