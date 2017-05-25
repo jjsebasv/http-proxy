@@ -7,6 +7,7 @@ import java.nio.channels.Selector;
 import java.util.Iterator;
 
 import nio.TCPProtocol;
+import pdc.admin.AdminHandler;
 import pdc.config.ProxyConfiguration;
 import pdc.logger.HttpProxyLogger;
 
@@ -20,6 +21,9 @@ public class HttpServerSelector {
         String proxyHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
         int proxyPort = Integer.parseInt(proxyConfiguration.getProperty("proxy_port"));
 
+        String adminHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
+        int adminPort = Integer.parseInt((proxyConfiguration.getProperty("admin_port")));
+
         if(verbose) {
             System.out.println("Initializing proxy server");
         }
@@ -28,6 +32,7 @@ public class HttpServerSelector {
         Selector selector = Selector.open();
 
         TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(proxyHost, proxyPort, selector);
+        AdminHandler adminHandler = new AdminHandler(adminHost, adminPort, selector);
 
         while (true) {
 
@@ -41,11 +46,19 @@ public class HttpServerSelector {
                 SelectionKey key = keyIter.next();
 
                 if (key.isAcceptable()) {
-                	HttpClientSelectorProtocol.handleAccept(key);
+                    if (adminHandler.getAdminServerChannel().equals(key.channel())) {
+                        adminHandler.handleAccept(key);
+                    } else {
+                        HttpClientSelectorProtocol.handleAccept(key);
+                    }
                 }
 
                 if (key.isReadable()) {
-                	HttpClientSelectorProtocol.handleRead(key);
+                    if (adminHandler.getAdminChannel().equals(key.channel())) {
+                        adminHandler.handleRead(key);
+                    } else {
+                        HttpClientSelectorProtocol.handleRead(key);
+                    }
                 }
 
                 if (key.isValid() && key.isWritable()) {

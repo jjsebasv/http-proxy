@@ -1,18 +1,16 @@
-package pdc.proxy;
+package pdc.connection;
 
-import com.sun.org.apache.bcel.internal.generic.Select;
 import pdc.config.ProxyConfiguration;
+import pdc.connection.Connection;
+import pdc.proxy.HttpMessage;
+import pdc.proxy.Request;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.LinkedList;
-import java.util.Queue;
 
-public class ProxyConnection {
-
-    ProxyConfiguration proxyConfiguration = ProxyConfiguration.getInstance();
+public class ProxyConnection implements Connection {
 
 	private SocketChannel clientChannel;
     private SelectionKey clientKey;
@@ -31,7 +29,6 @@ public class ProxyConnection {
     public void setClientKey(SelectionKey clientKey) {
         this.clientKey = clientKey;
     }
-
 
 	public ProxyConnection(SocketChannel clientChannel) {
 		this.clientChannel = clientChannel;
@@ -83,5 +80,9 @@ public class ProxyConnection {
 
     public void setHttpMessage(HttpMessage httpMessage) {
         this.httpMessage = httpMessage;
+    }
+
+    public void endConnection() {
+        // TODO - do this function
     }
 }

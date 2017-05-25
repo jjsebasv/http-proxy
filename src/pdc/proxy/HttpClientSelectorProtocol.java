@@ -11,6 +11,7 @@ import java.nio.channels.*;
 
 import nio.TCPProtocol;
 import pdc.config.ProxyConfiguration;
+import pdc.connection.ProxyConnection;
 import pdc.logger.HttpProxyLogger;
 
 public class HttpClientSelectorProtocol implements TCPProtocol {
