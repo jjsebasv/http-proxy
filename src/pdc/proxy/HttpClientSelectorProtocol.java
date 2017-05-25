@@ -125,22 +125,34 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 connection.getHttpMessage().readRequest(connection.buffer);
             }
 
+            handleSendMessage(key);
+
         }
 	}
 
     public void handleWrite(SelectionKey key) throws SocketException, UnsupportedEncodingException {
+
+        ByteBuffer buffer = (ByteBuffer) key.attachment();
+        SocketChannel channel = (SocketChannel) key.channel();
+        channel.socket().setSendBufferSize(1024);
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        connection.buffer.rewind();
-        //connection.buffer.flip();
+        System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
+        try {
+            System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+            channel.write(connection.buffer);
+            System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+            if (connection.buffer.hasRemaining()) {
+                channel.register(key.selector(), SelectionKey.OP_WRITE);
+                // SelectionKey channelKey = channel.keyFor(key.selector()); tal vez no hace falta
+                //channelKey.attach(buffer);
+            } else {
+                channel.register(key.selector(), SelectionKey.OP_READ);
+                connection.buffer.clear();
+            }
 
-        System.out.println("Vamo a escribir");
-        String v = new String(connection.buffer.array(), "UTF-8");
-        System.out.print(v);
-        // Until here
-
-        handleSendMessage(key);
-        // dudoso
-        key.interestOps(connection.buffer.position() > 0 ? SelectionKey.OP_READ | SelectionKey.OP_WRITE : SelectionKey.OP_READ);
+        } catch (IOException e) {
+            logger.warn("Connection closed by client");
+        }
     }
 
     private void sendToServer(SelectionKey key) {
@@ -194,7 +206,9 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         } else {
             sendToServer(key);
         }
-        connection.setHttpMessage(new HttpMessage());
+        if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
+            connection.setHttpMessage(new HttpMessage());
+        }
     }
 
     /**
@@ -211,6 +225,30 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
      * Write data to a specific channel
      */
     public void writeInChannel(SelectionKey key, SocketChannel channel) {
+
+
+        ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
+        SelectionKey channelKey = channel.keyFor(selector);
+        try {
+            channel.register(selector, SelectionKey.OP_WRITE);
+            channelKey.attach(buffer);
+        } catch (ClosedChannelException e) {
+            // TODO Auto-generated catch block
+            if (MainProxy.verbose)
+                System.out.println("Error al registrar una key para escribir");
+        }
+
+//System.out.println("Vamo a escribir");
+        //String v = new String(connection.buffer.array(), "UTF-8");
+        //System.out.print(v);
+        // Until here
+
+        //
+        // dudoso
+        //key.interestOps(connection.buffer.position() > 0 ? SelectionKey.OP_READ | SelectionKey.OP_WRITE : SelectionKey.OP_READ);
+
+
+
     	ProxyConnection connection = (ProxyConnection) key.attachment();
 
     	try {
