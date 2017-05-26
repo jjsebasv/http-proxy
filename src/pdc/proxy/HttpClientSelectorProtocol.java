@@ -12,6 +12,7 @@ import java.nio.charset.Charset;
 
 import nio.TCPProtocol;
 import pdc.config.ProxyConfiguration;
+import pdc.connection.ProxyConnection;
 import pdc.logger.HttpProxyLogger;
 import pdc.parser.ParsingStatus;
 
