@@ -15,10 +15,6 @@ public class HttpParser {
                 message.startsWith("TRACE") || message.startsWith("PATCH");
     }
 
-    public static boolean bodyReady(String contentLength, long readLength) {
-        return contentLength == null || Long.valueOf(contentLength) <= readLength;
-    }
-
     public static boolean isResponse(String message) {
         return message.startsWith("HTTP");
     }
