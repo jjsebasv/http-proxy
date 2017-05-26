@@ -17,8 +17,6 @@ public class HttpServerSelector {
 
         ProxyConfiguration proxyConfiguration = ProxyConfiguration.getInstance();
         boolean verbose = Boolean.valueOf(proxyConfiguration.getProperty("verbose"));
-        String proxyHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
-        int proxyPort = Integer.parseInt(proxyConfiguration.getProperty("proxy_port"));
 
         if(verbose) {
             System.out.println("Initializing proxy server");
@@ -27,7 +25,7 @@ public class HttpServerSelector {
 
         Selector selector = Selector.open();
 
-        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(proxyHost, proxyPort, selector);
+        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(selector);
 
         while (true) {
 
