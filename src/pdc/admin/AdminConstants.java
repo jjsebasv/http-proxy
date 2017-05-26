@@ -15,15 +15,21 @@ public final class AdminConstants {
      */
     public static final byte[] HELP = ("200 OK\r\nThis is help\r\n\r\n").getBytes();
     public static final byte[] LOG_REQUEST = ("200 OK\r\nEnter username (type: user [USERNAME])\r\n\r\n").getBytes();
-    public static final byte[] KNOWN_USER = ("200 OK\r\nKnown username (type: pass [PASS]\r\n\r\n").getBytes();
+    public static final byte[] KNOWN_USER = ("200 OK\r\nKnown username (type: pass [PASS])\r\n\r\n").getBytes();
     public static final byte[] LOGGED_IN = ("200 OK\r\nYou are know logged in\r\n\r\n").getBytes();
     public static final byte[] LOGGED_OUT = ("200 OK\r\nGood Bye!\r\n\r\n").getBytes();
     public static final byte[] LEET_ON = ("200 OK\r\nThe leet converter is on\r\n\r\n").getBytes();
     public static final byte[] LEET_OFF = ("200 OK\r\nThe leet converter is off\r\n\r\n").getBytes();
+    public static final byte[] FLIP_ON = ("200 OK\r\nThe image flip converter is on\r\n\r\n").getBytes();
+    public static final byte[] FLIP_OFF = ("200 OK\r\nThe flip image converter is off\r\n\r\n").getBytes();
     public static final byte[] BLOCKED_HOST = ("200 OK\r\nHost Blocked\r\n\r\n").getBytes();
     public static final byte[] BLOCKED_PORT= ("200 OK\r\nPort Blocked\r\n\r\n").getBytes();
     public static final byte[] UNBLOCKED_HOST = ("200 OK\r\nHost Unblocked\r\n\r\n").getBytes();
-    public static final byte[] UNBLOCKED_PORT = ("200\r\nPort Unblocked\r\n\r\n").getBytes();
+    public static final byte[] UNBLOCKED_PORT = ("200 OK\r\nPort Unblocked\r\n\r\n").getBytes();
+
+    public static final byte[] ADDING_USER = ("200 OK\r\nEnter username (type: user [USERNAME])\r\n\r\n").getBytes();
+    public static final byte[] ADDING_PASS = ("200 OK\r\nUsername available (type: pass [PASS])\r\n\r\n").getBytes();
+    public static final byte[] ADDING_BLACKLIST = ("200 OK\r\nYou can block hosts or ports (type: host [HOST] or port [PORT])\r\n\r\n").getBytes();
 
     /**
      * 201 Created
@@ -74,7 +80,15 @@ public final class AdminConstants {
      **/
     public static final byte[] WRONG_USERNAME = ("401 Unauthorized\r\nThe username specified doesn't exist\r\n\r\n").getBytes();
     public static final byte[] WRONG_PASSWORD = ("401 Unauthorized\r\nUsername and password doesn't match\r\n\r\n").getBytes();
-    public static final byte[] UNAUTHORIZED = ("401\r\nYou should be logged in\r\n\r\n").getBytes();
+    public static final byte[] UNAUTHORIZED = ("401 Unauthorized\r\nYou should be logged in\r\n\r\n").getBytes();
+
+    /**
+     * 409 Conflict
+     * The request was processed but some of the information given resulted in conflict
+     * Data gives human readable information about response
+     **/
+    public static final byte[] USERNAME_IN_USE = ("409 Conflict\r\nUsername in use. Enter username (type: user [USERNAME])\r\n\r\n").getBytes();
+
 
     /**
      * 500 Internal Error

@@ -1,5 +1,8 @@
 package pdc.admin;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Created by sebastian on 5/25/17.
  */
@@ -18,5 +21,12 @@ public class Admin {
 
     public void setPassword(String newPass) {
         this.password = newPass;
+    }
+
+    private static final Set<Admin> admins = new HashSet<Admin>();
+    public static Set<Admin> getAdmins() { return admins; }
+
+    public static void generateFirstAdmin() {
+        admins.add(new Admin("juan", "juanjuan123"));
     }
 }

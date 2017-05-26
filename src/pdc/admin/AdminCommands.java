@@ -9,5 +9,8 @@ public enum AdminCommands {
     ADD,
     USER,
     PASS,
+    HOST,
+    PORT,
+    SET,
     WRONG_COMMAND
 }

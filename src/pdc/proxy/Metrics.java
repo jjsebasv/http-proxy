@@ -54,7 +54,7 @@ public class Metrics {
     }
 
     public String getMethodHistograms() {
-        return String.format("GET requests: %d\nPOST requests",getRequests, postRequests);
+        return String.format("GET requests: %d\nPOST requests: %d",getRequests, postRequests);
     }
 
     public String getAll() {

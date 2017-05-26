@@ -159,6 +159,39 @@ public class AdminHandler {
             case TOTAL_ACCESSES:
                 channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("total_acceses")));
                 break;
+            case USER_IN_USE:
+                channel.write(ByteBuffer.wrap(AdminConstants.USERNAME_IN_USE));
+                break;
+            case NEW_USER_OK:
+                channel.write(ByteBuffer.wrap(AdminConstants.ADDING_PASS));
+                break;
+            case USER_CREATED:
+                channel.write(ByteBuffer.wrap(AdminConstants.USER_CREATED));
+                break;
+            case ADD_USER:
+                channel.write(ByteBuffer.wrap(AdminConstants.ADDING_USER));
+                break;
+            case BLACK_LIST:
+                channel.write(ByteBuffer.wrap(AdminConstants.ADDING_BLACKLIST));
+                break;
+            case HOST_BLOCKED:
+                channel.write(ByteBuffer.wrap(AdminConstants.BLOCKED_HOST));
+                break;
+            case PORT_BLOCKED:
+                channel.write(ByteBuffer.wrap(AdminConstants.BLOCKED_PORT));
+                break;
+            case LEET_ON:
+                channel.write(ByteBuffer.wrap(AdminConstants.LEET_ON));
+                break;
+            case LEET_OFF:
+                channel.write(ByteBuffer.wrap(AdminConstants.LEET_OFF));
+                break;
+            case FLIP_ON:
+                channel.write(ByteBuffer.wrap(AdminConstants.FLIP_ON));
+                break;
+            case FLIP_OFF:
+                channel.write(ByteBuffer.wrap(AdminConstants.FLIP_OFF));
+                break;
             case UNAUTHORIZED:
                 channel.write(ByteBuffer.wrap(AdminConstants.UNAUTHORIZED));
                 break;

@@ -7,6 +7,7 @@ import java.nio.channels.Selector;
 import java.util.Iterator;
 
 import nio.TCPProtocol;
+import pdc.admin.Admin;
 import pdc.admin.AdminHandler;
 import pdc.config.ProxyConfiguration;
 import pdc.logger.HttpProxyLogger;
@@ -29,8 +30,9 @@ public class HttpServerSelector {
 
         Selector selector = Selector.open();
 
-        AdminHandler adminHandler = new AdminHandler(adminHost, adminPort, selector);
         TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(selector);
+        AdminHandler adminHandler = new AdminHandler(adminHost, adminPort, selector);
+        Admin.generateFirstAdmin();
 
         while (true) {
 
