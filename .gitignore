@@ -1,7 +1,9 @@
-
+.idea/workspace.xml
+.idea/
 out/*
 .classpath
 .class
 .project
 .DS_Store
 target/
+.idea/misc.xml
