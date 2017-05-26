@@ -105,7 +105,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 logger.error("Cannot close socket channel");
             }
             key.cancel();
-            logger.debug("Finish reading from " + connection.getHttpMessage().getHaders().get("Host"));
+            logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
             return;
         }
 
@@ -132,17 +132,16 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 
         try {
             if (connection.getServerChannel() == null) {
-                InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getHaders().get("Host"), 80);
+                InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), 80);
                 SocketChannel serverChannel = SocketChannel.open(hostAddress);
-                logger.info("Connecting proxy to: " + connection.getHttpMessage().getHaders().get("Host"));
+                logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
                 serverChannel.configureBlocking(false);
                 serverChannel.register(this.selector, SelectionKey.OP_READ, connection);
                 connection.setServerChannel(serverChannel);
             }
 
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-                String remoteHost = connection.getHttpMessage().getHaders().get("Host");
-                System.out.println("Proxy is writing to: " + remoteHost);
+                System.out.println("Proxy is writing to: " + connection.getHttpMessage().getUrl());
             }
             writeInChannel(connection.getServerChannel());
         }
@@ -175,7 +174,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
         try {
-            channel.socket().setSendBufferSize(1024);
+            channel.socket().setSendBufferSize(8192);
         } catch (SocketException e) {
             logger.warn("Cannot set buffer size");
         }

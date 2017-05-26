@@ -1,23 +1,23 @@
 package pdc.proxy;
 
-import pdc.parser.HttpParser;
 import pdc.parser.ParsingHeaderSection;
 import pdc.parser.ParsingSection;
 import pdc.parser.ParsingStatus;
 
+import java.net.MalformedURLException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
+import java.net.URL;
 
 /**
  * Created by nowi on 5/22/17.
  */
 public class HttpMessage {
 
+    private URL url;
     private StringBuilder message;
     private ParsingSection parsingSection;
     private ParsingStatus parsingStatus;
@@ -27,6 +27,7 @@ public class HttpMessage {
     private StringBuffer headerLine;
     private StringBuffer method;
     private StringBuffer status;
+    private StringBuffer urlBuffer;
 
     public HttpMessage() {
         this.parsingStatus = ParsingStatus.PENDING;
@@ -35,6 +36,7 @@ public class HttpMessage {
         this.headers = new HashMap<String, String>();
         headerLine = new StringBuffer();
         spaceCount = 0;
+        this.urlBuffer = new StringBuffer();
         method =  new StringBuffer();
         status = new StringBuffer();
         parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
@@ -45,12 +47,16 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
-        System.out.print(charBuffer.toString());
+        //System.out.print(charBuffer.toString());
         for (char c: charBuffer.array()) {
             parseRequest(c);
         }
         message.flip();
         message.rewind();
+    }
+
+    public URL getUrl() {
+        return this.url;
     }
 
     private void parseRequest (char b) {
@@ -61,6 +67,17 @@ public class HttpMessage {
                         this.method.append(b);
                     } else {
                         spaceCount++;
+                    }
+                } else if (spaceCount == 1) {
+                    if (b != ' ') {
+                        this.urlBuffer.append(b);
+                    } else {
+                        spaceCount++;
+                        try {
+                            this.url = new URL(this.urlBuffer.toString());
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
                     }
                 } else {
                     if (b == '\n') {
@@ -114,6 +131,7 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
+        //System.out.print(charBuffer.toString());
         for (char c: charBuffer.array()) {
             parseResponse(c);
         }
