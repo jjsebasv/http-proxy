@@ -7,13 +7,11 @@ import pdc.parser.ParsingStatus;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
 
 /**
  * Created by nowi on 5/22/17.
@@ -44,10 +42,15 @@ public class HttpMessage {
 
 
     public void readRequest(ByteBuffer message) {
-        System.out.println(message.getChar());
-        for (char c: message.asCharBuffer().array()) {
+        message.flip();
+        message.rewind();
+        CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
+        System.out.print(charBuffer.toString());
+        for (char c: charBuffer.array()) {
             parseRequest(c);
         }
+        message.flip();
+        message.rewind();
     }
 
     private void parseRequest (char b) {
@@ -108,10 +111,14 @@ public class HttpMessage {
     }
 
     public void readResponse (ByteBuffer message) {
+        message.flip();
+        message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
         for (char c: charBuffer.array()) {
             parseResponse(c);
         }
+        message.flip();
+        message.rewind();
     }
 
     private void parseResponse(char b) {

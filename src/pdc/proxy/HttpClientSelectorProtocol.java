@@ -105,45 +105,46 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 logger.error("Cannot close socket channel");
             }
             key.cancel();
-            logger.debug("Finish reading from " + connection.getServerUrl());
+            logger.debug("Finish reading from " + connection.getHttpMessage().getHaders().get("Host"));
             return;
         }
 
         if (channelIsServerSide(keyChannel, connection)) {
             connection.getHttpMessage().readResponse(connection.buffer);
-            sendMessageToClient(key);
+            sendToClient(key);
         } else {
             connection.getHttpMessage().readRequest(connection.buffer);
-            sendMessageToServer(key);
+            sendToServer(key);
         }
 	}
 
-    private void sendMessageToClient(SelectionKey key) {
+    private void sendToClient(SelectionKey key) {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
         if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
             System.out.println("proxy is writing to client");
         }
-        writeInChannel(key);
+        writeInChannel(connection.getClientChannel());
     }
 
 
-    private void sendMessageToServer(SelectionKey key) {
+    private void sendToServer(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
 
         try {
             if (connection.getServerChannel() == null) {
-                InetSocketAddress hostAddress = new InetSocketAddress(connection.getServerUrl(), connection.getServerPort());
+                InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getHaders().get("Host"), 80);
                 SocketChannel serverChannel = SocketChannel.open(hostAddress);
                 logger.info("Connecting proxy to: " + connection.getHttpMessage().getHaders().get("Host"));
                 serverChannel.configureBlocking(false);
-                serverChannel.register(this.selector, SelectionKey.OP_READ);
+                serverChannel.register(this.selector, SelectionKey.OP_READ, connection);
                 connection.setServerChannel(serverChannel);
             }
 
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-                String remoteHost = connection.getServerUrl();
+                String remoteHost = connection.getHttpMessage().getHaders().get("Host");
                 System.out.println("Proxy is writing to: " + remoteHost);
             }
-            writeInChannel(key);
+            writeInChannel(connection.getServerChannel());
         }
         catch(ClosedByInterruptException e) {
             logger.error(e.toString());
@@ -192,12 +193,10 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
 
             if (connection.buffer.hasRemaining()) {
-                channel.register(selector, SelectionKey.OP_WRITE);
-                SelectionKey channelKey = channel.keyFor(selector);
-                channelKey.attach(connection.buffer);
+                channel.register(selector, SelectionKey.OP_WRITE, connection);
             } else {
-                channel.register(selector, SelectionKey.OP_READ);
                 connection.buffer.clear();
+                channel.register(selector, SelectionKey.OP_READ, connection);
             }
 
         } catch (IOException e) {
@@ -220,12 +219,11 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	/**
      * Write data to a specific channel
      */
-    public void writeInChannel(SelectionKey key) {
-        ProxyConnection connection = (ProxyConnection) key.attachment();
+    public void writeInChannel(SocketChannel channel) {
         SelectionKey channelKey = channel.keyFor(selector);
+        ProxyConnection connection = (ProxyConnection) channelKey.attachment();
         try {
-            channel.register(selector, SelectionKey.OP_WRITE);
-            channelKey.attach(connection.buffer);
+            channel.register(selector, SelectionKey.OP_WRITE, connection);
         } catch (ClosedChannelException e) {
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
                 System.out.println("Error registering the key in write mode");

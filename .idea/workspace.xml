@@ -2,14 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="78291d1a-dde4-4ec7-908d-629058798a02" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/http-proxy-server.iml" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/compiler.xml" afterPath="$PROJECT_DIR$/.idea/compiler.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/http-proxy.iml" afterPath="$PROJECT_DIR$/http-proxy.iml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java" afterPath="$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/pdc/proxy/HttpMessage.java" afterPath="$PROJECT_DIR$/src/pdc/proxy/HttpMessage.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/pdc/proxy/HttpServerSelector.java" afterPath="$PROJECT_DIR$/src/pdc/proxy/HttpServerSelector.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/resources/config.properties" afterPath="$PROJECT_DIR$/src/resources/config.properties" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
@@ -44,8 +39,8 @@
       <file leaf-file-name="HttpServerSelector.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpServerSelector.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="615">
-              <caret line="41" column="54" lean-forward="true" selection-start-line="41" selection-start-column="54" selection-end-line="41" selection-end-column="54" />
+            <state relative-caret-position="340">
+              <caret line="49" column="0" lean-forward="false" selection-start-line="49" selection-start-column="0" selection-end-line="49" selection-end-column="0" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -63,21 +58,21 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="HttpClientSelectorProtocol.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="HttpClientSelectorProtocol.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="337">
-              <caret line="95" column="59" lean-forward="true" selection-start-line="95" selection-start-column="59" selection-end-line="95" selection-end-column="59" />
+            <state relative-caret-position="269">
+              <caret line="114" column="16" lean-forward="true" selection-start-line="114" selection-start-column="16" selection-end-line="114" selection-end-column="16" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="HttpMessage.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="HttpMessage.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpMessage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="113">
-              <caret line="42" column="5" lean-forward="true" selection-start-line="42" selection-start-column="5" selection-end-line="42" selection-end-column="5" />
+            <state relative-caret-position="153">
+              <caret line="51" column="0" lean-forward="false" selection-start-line="51" selection-start-column="0" selection-end-line="51" selection-end-column="0" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -98,8 +93,8 @@
       <file leaf-file-name="config.properties" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/resources/config.properties">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="60">
-              <caret line="4" column="21" lean-forward="true" selection-start-line="4" selection-start-column="21" selection-end-line="4" selection-end-column="21" />
+            <state relative-caret-position="45">
+              <caret line="3" column="13" lean-forward="false" selection-start-line="3" selection-start-column="13" selection-end-line="3" selection-end-column="13" />
               <folding />
             </state>
           </provider>
@@ -112,9 +107,17 @@
       <find>verbose</find>
       <find>writein</find>
       <find>verbo</find>
-      <find>writeinc</find>
       <find>Accepted new client connection</find>
       <find>system</find>
+      <find>writeinc</find>
+      <find>parse</find>
+      <find>read</find>
+      <find>proxy is</find>
+      <find>remain</find>
+      <find>sendto</find>
+      <find>conne</find>
+      <find>.register</find>
+      <find>register</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -128,11 +131,11 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/src/resources/config.properties" />
         <option value="$PROJECT_DIR$/src/nio/TCPProtocol.java" />
         <option value="$PROJECT_DIR$/src/pdc/proxy/HttpServerSelector.java" />
-        <option value="$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java" />
         <option value="$PROJECT_DIR$/src/pdc/proxy/HttpMessage.java" />
+        <option value="$PROJECT_DIR$/src/resources/config.properties" />
+        <option value="$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java" />
       </list>
     </option>
   </component>
@@ -691,12 +694,12 @@
       <option name="presentableId" value="Default" />
       <updated>1495749861978</updated>
       <workItem from="1495749864273" duration="74000" />
-      <workItem from="1495749948505" duration="6419000" />
+      <workItem from="1495749948505" duration="10326000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="6493000" />
+    <option name="totallyTimeSpent" value="10400000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -754,42 +757,12 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java</url>
-          <line>173</line>
+          <line>174</line>
           <properties />
-          <option name="timeStamp" value="4" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java</url>
-          <line>129</line>
-          <properties />
-          <option name="timeStamp" value="6" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java</url>
-          <line>89</line>
-          <properties />
-          <option name="timeStamp" value="7" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/pdc/proxy/HttpMessage.java</url>
-          <line>53</line>
-          <properties />
-          <option name="timeStamp" value="9" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java</url>
-          <line>49</line>
-          <properties />
-          <option name="timeStamp" value="10" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java</url>
-          <line>93</line>
-          <properties />
-          <option name="timeStamp" value="11" />
+          <option name="timeStamp" value="23" />
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="12" />
+      <option name="time" value="24" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -806,6 +779,16 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpServerSelector.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="340">
+          <caret line="49" column="0" lean-forward="false" selection-start-line="49" selection-start-column="0" selection-end-line="49" selection-end-column="0" />
+          <folding>
+            <element signature="imports" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="jar:///Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/src.zip!/java/net/InetSocketAddress.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="181">
@@ -814,39 +797,29 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/resources/config.properties">
+    <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpMessage.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="4" column="21" lean-forward="true" selection-start-line="4" selection-start-column="21" selection-end-line="4" selection-end-column="21" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpServerSelector.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="615">
-          <caret line="41" column="54" lean-forward="true" selection-start-line="41" selection-start-column="54" selection-end-line="41" selection-end-column="54" />
+        <state relative-caret-position="153">
+          <caret line="51" column="0" lean-forward="false" selection-start-line="51" selection-start-column="0" selection-end-line="51" selection-end-column="0" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/resources/config.properties">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="45">
+          <caret line="3" column="13" lean-forward="false" selection-start-line="3" selection-start-column="13" selection-end-line="3" selection-end-column="13" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpClientSelectorProtocol.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="337">
-          <caret line="95" column="59" lean-forward="true" selection-start-line="95" selection-start-column="59" selection-end-line="95" selection-end-column="59" />
+        <state relative-caret-position="269">
+          <caret line="114" column="16" lean-forward="true" selection-start-line="114" selection-start-column="16" selection-end-line="114" selection-end-column="16" />
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/pdc/proxy/HttpMessage.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="113">
-          <caret line="42" column="5" lean-forward="true" selection-start-line="42" selection-start-column="5" selection-end-line="42" selection-end-column="5" />
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
