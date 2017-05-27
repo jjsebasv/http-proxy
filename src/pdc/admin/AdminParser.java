@@ -132,12 +132,12 @@ public class AdminParser {
                 }
                 break;
             case LOG:
+                if (this.adding)
+                    break;
                 if (value.toLowerCase().equals("in")) {
                     this.logRequest = true;
                     return AdminResponses.LOG_REQUEST;
                 }
-                if (this.adding)
-                    break;
                 if (value.toLowerCase().equals("out")) {
                     this.logged = false;
                     this.logRequest = false;
@@ -156,7 +156,7 @@ public class AdminParser {
                         this.username = auxUser;
                         return AdminResponses.USER_IN_USE;
                     }
-                    this.newUser = this.username;
+                    this.newUser = value;
                     this.username = auxUser;
                     return AdminResponses.NEW_USER_OK;
                 }
@@ -170,11 +170,10 @@ public class AdminParser {
                 if (!knownUsername) {
                     return AdminResponses.UNAUTHORIZED;
                 }
-                if (newUser == null)
-                    break;
                 if (this.adding) {
                     boolean add = Admin.getAdmins().add(new Admin(this.newUser, value));
                     this.newUser = null;
+                    this.adding = false;
                     if (add)
                         return AdminResponses.USER_CREATED;
                     return AdminResponses.INTERNAL_ERROR;

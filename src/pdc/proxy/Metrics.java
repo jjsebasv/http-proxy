@@ -38,19 +38,19 @@ public class Metrics {
     }
 
     public String getReceivedBytes() {
-        return String.format("Total acceses: %d",receivedBytes);
+        return String.format("Received Bytes: %d",receivedBytes);
     }
 
     public String getTransferredBytes() {
-        return String.format("Total acceses: %d",transferedBytes);
+        return String.format("Transferred Bytes: %d",transferedBytes);
     }
 
     public String getConvertedChars() {
-        return String.format("Total acceses: %d",convertedCharacters);
+        return String.format("Converted Chars: %d",convertedCharacters);
     }
 
     public String getFlippedImages() {
-        return String.format("Total acceses: %d",flippedImages);
+        return String.format("Flipped Images: %d",flippedImages);
     }
 
     public String getMethodHistograms() {

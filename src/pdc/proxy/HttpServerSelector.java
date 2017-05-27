@@ -46,7 +46,7 @@ public class HttpServerSelector {
                 SelectionKey key = keyIter.next();
 
                 if (key.isAcceptable()) {
-                    if (adminHandler.getAdminServerChannel().equals(key.channel())) {
+                    if (key.channel().equals(adminHandler.getAdminServerChannel())) {
                         adminHandler.handleAccept(key);
                     } else {
                         HttpClientSelectorProtocol.handleAccept(key);
@@ -54,7 +54,7 @@ public class HttpServerSelector {
                 }
 
                 if (key.isReadable()) {
-                    if (adminHandler.getAdminChannel().equals(key.channel())) {
+                    if (key.channel().equals(adminHandler.getAdminChannel())) {
                         adminHandler.handleRead(key);
                     } else {
                         HttpClientSelectorProtocol.handleRead(key);
