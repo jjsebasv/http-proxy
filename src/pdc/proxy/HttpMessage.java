@@ -106,6 +106,10 @@ public class HttpMessage {
     private void saveHeader(StringBuffer stringBuffer) {
         String string = stringBuffer.toString();
         String stringHeaders[] = string.split(": ");
+        if (stringHeaders.length <= 1){
+            System.out.println("Something went wrong here");
+            return;
+        }
         this.headers.put(stringHeaders[0], stringHeaders[1]);
     }
 

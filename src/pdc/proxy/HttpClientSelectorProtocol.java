@@ -80,6 +80,8 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
         }
         this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
+        if (key.attachment() == null)
+            key.attach(connection);
     }
 
 	/**
@@ -124,7 +126,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
         if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
             System.out.println("proxy is writing to client");
         }
-        writeInChannel(connection.getClientChannel());
+        writeInChannel(key, connection.getClientChannel());
     }
 
 
@@ -144,7 +146,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
                 System.out.println("Proxy is writing to: " + connection.getHttpMessage().getUrl());
             }
-            writeInChannel(connection.getServerChannel());
+            writeInChannel(key, connection.getServerChannel());
         }
         catch(ClosedByInterruptException e) {
             logger.error(e.toString());
@@ -196,6 +198,7 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 channel.register(selector, SelectionKey.OP_WRITE, connection);
             } else {
                 connection.buffer.clear();
+                connection.setHttpMessage(new HttpMessage());
                 channel.register(selector, SelectionKey.OP_READ, connection);
             }
 
@@ -219,9 +222,9 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
 	/**
      * Write data to a specific channel
      */
-    public void writeInChannel(SocketChannel channel) {
-        SelectionKey channelKey = channel.keyFor(selector);
-        ProxyConnection connection = (ProxyConnection) channelKey.attachment();
+    public void writeInChannel(SelectionKey key, SocketChannel channel) {
+        // FIXME -- receive key as param
+        ProxyConnection connection = (ProxyConnection) key.attachment();
         try {
             channel.register(selector, SelectionKey.OP_WRITE, connection);
         } catch (ClosedChannelException e) {
