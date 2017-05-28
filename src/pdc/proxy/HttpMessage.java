@@ -1,6 +1,7 @@
 package pdc.proxy;
 
 import pdc.conversor.Conversor;
+import pdc.conversor.FlippedImage;
 import pdc.parser.ParsingHeaderSection;
 import pdc.parser.ParsingSection;
 import pdc.parser.ParsingStatus;
@@ -28,6 +29,8 @@ public class HttpMessage {
     private StringBuffer method;
     private StringBuffer status;
     private StringBuffer urlBuffer;
+
+    private FlippedImage flippedImage;
 
     public HttpMessage() {
         this.parsingStatus = ParsingStatus.PENDING;
@@ -126,6 +129,10 @@ public class HttpMessage {
             parseResponse(c, message, i);
             i++;
         }
+        if (this.flippedImage != null) {
+            Conversor.flipImage(flippedImage, message, i);
+            this.flippedImage = null;
+        }
         message.flip();
         message.rewind();
     }
@@ -155,6 +162,11 @@ public class HttpMessage {
                 String contentType = headers.get("Content-Type");
                 if (contentType.equals("text/plain")) {
                     message.put(pos, Conversor.leet(b));
+                } else if (contentType.contains("image")) {
+                    if (this.flippedImage == null){
+                        this.flippedImage = new FlippedImage(Integer.parseInt(headers.get("Content-Length")), pos);
+                    }
+                    this.flippedImage.putByte(pos, message.get(pos));
                 }
                 break;
         }
