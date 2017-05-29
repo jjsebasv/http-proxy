@@ -1,6 +1,7 @@
 package pdc.proxy;
 
 import pdc.conversor.Conversor;
+import pdc.conversor.FlippedImage;
 import pdc.parser.ParsingHeaderSection;
 import pdc.parser.ParsingSection;
 import pdc.parser.ParsingStatus;
@@ -29,6 +30,8 @@ public class HttpMessage {
     private StringBuffer status;
     private StringBuffer urlBuffer;
     private long bytesRead;
+    private FlippedImage flippedImage;
+    private boolean doImageMagic = false;
 
     public HttpMessage() {
         this.parsingStatus = ParsingStatus.PENDING;
@@ -121,8 +124,14 @@ public class HttpMessage {
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
         System.out.println(charBuffer.toString());
+        int i = 0;
         for (char c: charBuffer.array()) {
-            parseResponse(c);
+            parseResponse(c, message, i);
+            i++;
+        }
+        if (doImageMagic) {
+            Conversor.flipImage(flippedImage, message, i);
+            doImageMagic = false;
         }
         bytesRead +=getBodyBytes(message);
         parseBody();
@@ -152,7 +161,7 @@ public class HttpMessage {
         }
     }
 
-    private void parseResponse(char b) {
+    private void parseResponse(char b, ByteBuffer message, int pos) {
         switch (parsingSection) {
             case HEAD:
                 if (spaceCount == 0) {
@@ -171,6 +180,19 @@ public class HttpMessage {
                 parseHeader(b);
                 break;
             case BODY:
+                if (!headers.containsKey("Content-Type")) {
+                    break;
+                }
+                String contentType = headers.get("Content-Type");
+                if (contentType.equals("text/plain")) {
+                    message.put(pos, Conversor.leet(b));
+                } else if (contentType.contains("image")) {
+                    if (this.flippedImage == null){
+                        this.flippedImage = new FlippedImage(Integer.parseInt(headers.get("Content-Length")), pos);
+                        this.doImageMagic = true;
+                    }
+                    this.flippedImage.putByte(message.get(pos), pos);
+                }
                 break;
         }
     }
