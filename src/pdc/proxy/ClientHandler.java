@@ -57,6 +57,8 @@ public class ClientHandler implements TCPProtocol {
         ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
         SocketChannel newChannel = null;
 
+        System.out.println("*** accepting ***");
+
         try {
             newChannel = keyChannel.accept();
         } catch (IOException e) {
@@ -97,7 +99,7 @@ public class ClientHandler implements TCPProtocol {
 	public void handleRead(SelectionKey key) throws UnsupportedEncodingException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
 		SocketChannel keyChannel = (SocketChannel) key.channel();
-
+        System.out.println("*** reading ***");
         int bytesRead = -1;
         connection.buffer = ByteBuffer.allocate(bufferSize);
         try {
@@ -118,9 +120,11 @@ public class ClientHandler implements TCPProtocol {
         }
 
         if (channelIsServerSide(keyChannel, connection)) {
+            System.out.println("*** sending to client ***");
             connection.getHttpMessage().readResponse(connection.buffer);
             sendToClient(key);
         } else {
+            System.out.println("*** sending to server ***");
             connection.getHttpMessage().readRequest(connection.buffer);
             sendToServer(key);
         }
@@ -132,6 +136,9 @@ public class ClientHandler implements TCPProtocol {
             System.out.println("proxy is writing to client");
         }
         writeInChannel(key, connection.getClientChannel());
+        // TODO restart buffers and gilada
+        ((ProxyConnection) key.attachment()).setServerChannel(null);
+        System.out.println("termino el proceso");
     }
 
 
@@ -181,6 +188,7 @@ public class ClientHandler implements TCPProtocol {
     public void handleWrite(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
+        System.out.println("*** writing ***");
         try {
             channel.socket().setSendBufferSize(8192);
         } catch (SocketException e) {
