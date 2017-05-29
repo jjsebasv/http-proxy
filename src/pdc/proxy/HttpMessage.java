@@ -28,6 +28,7 @@ public class HttpMessage {
     private StringBuffer method;
     private StringBuffer status;
     private StringBuffer urlBuffer;
+    private long bytesRead;
 
     public HttpMessage() {
         this.parsingStatus = ParsingStatus.PENDING;
@@ -35,6 +36,7 @@ public class HttpMessage {
         this.headers = new HashMap<String, String>();
         headerLine = new StringBuffer();
         spaceCount = 0;
+        bytesRead = 0;
         this.urlBuffer = new StringBuffer();
         method =  new StringBuffer();
         status = new StringBuffer();
@@ -43,15 +45,16 @@ public class HttpMessage {
 
 
     public void readRequest(ByteBuffer message) {
-        resetForRequest();
         message.flip();
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
-        System.out.print(charBuffer.toString());
+        System.out.println(charBuffer.toString());
+        bytesRead += message.limit();
         for (char c: charBuffer.array()) {
             parseRequest(c);
             // FIXME -- We should find a way to skip the lecture of the body
         }
+        parseBody();
         message.flip();
         message.rewind();
     }
@@ -77,7 +80,7 @@ public class HttpMessage {
                         try {
                             this.url = new URL(this.urlBuffer.toString());
                         } catch (MalformedURLException e) {
-                            e.printStackTrace();
+                            System.out.println("Malformed URL " + this.url);
                         }
                     }
                 } else {
@@ -90,16 +93,16 @@ public class HttpMessage {
                 parseHeader(b);
                 break;
             case BODY:
-                if (b == '\n')
-                if (!headers.containsKey("Content-Type")) {
-                    break;
-                }
-                String contentType = headers.get("Content-Type");
-                if (contentType.equals("text/plain")) {
-                    System.out.println("Got a text plain");
-                }
                 break;
 
+        }
+    }
+
+    private void parseBody() {
+        if (this.headers.containsKey("Content-Length") && (bytesRead - 2)  == Long.valueOf(this.headers.get("Content-Length"))) {
+            this.parsingStatus = ParsingStatus.FINISH;
+            System.out.println("FINISH READING BODY");
+            reset();
         }
     }
 
@@ -114,23 +117,42 @@ public class HttpMessage {
     }
 
     public void readResponse (ByteBuffer message) {
-        // Restart reading variables
-        resetForResponse();
-
         message.flip();
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
-        System.out.print(charBuffer.toString());
-        int i = 0;
+        System.out.println(charBuffer.toString());
         for (char c: charBuffer.array()) {
-            parseResponse(c, message, i);
-            i++;
+            parseResponse(c);
         }
+        bytesRead +=getBodyBytes(message);
+        parseBody();
         message.flip();
         message.rewind();
     }
 
-    private void parseResponse(char b, ByteBuffer message, int pos) {
+    private int getBodyBytes(ByteBuffer message) {
+        if (this.bytesRead == 0) {
+            int i = 0;
+            boolean endLine = false;
+            for (byte b: message.array()) {
+                if (b == 10) {
+                    endLine = true;
+                } else {
+                    if (b == 13 && endLine) {
+                        break;
+                    } else {
+                        endLine = false;
+                    }
+                }
+                i++;
+            }
+            return message.limit() - i;
+        } else {
+            return message.limit();
+        }
+    }
+
+    private void parseResponse(char b) {
         switch (parsingSection) {
             case HEAD:
                 if (spaceCount == 0) {
@@ -149,13 +171,6 @@ public class HttpMessage {
                 parseHeader(b);
                 break;
             case BODY:
-                if (!headers.containsKey("Content-Type")) {
-                    break;
-                }
-                String contentType = headers.get("Content-Type");
-                if (contentType.equals("text/plain")) {
-                    message.put(pos, Conversor.leet(b));
-                }
                 break;
         }
     }
@@ -193,13 +208,14 @@ public class HttpMessage {
                     this.parsingSection = ParsingSection.BODY;
                     if (!headers.containsKey("Content-Length")) {
                         this.parsingStatus = ParsingStatus.FINISH;
+                        reset();
                     }
                 }
                 break;
         }
     }
 
-    private void resetForRequest() {
+    private void reset() {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
         this.headers = new HashMap<String, String>();
@@ -209,14 +225,6 @@ public class HttpMessage {
         method =  new StringBuffer();
         status = new StringBuffer();
         parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
+        this.bytesRead = 0;
     }
-
-    private void resetForResponse() {
-        this.parsingStatus = ParsingStatus.PENDING;
-        this.parsingSection = ParsingSection.HEAD;
-        this.headers = new HashMap<String, String>();
-        headerLine = new StringBuffer();
-        parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
-    }
-
 }

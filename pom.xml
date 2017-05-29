@@ -75,7 +75,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>pdc.proxy.HttpServerSelector</mainClass>
+                            <mainClass>pdc.proxy.HttpProxy</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

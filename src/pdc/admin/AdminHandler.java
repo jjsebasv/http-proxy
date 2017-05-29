@@ -6,6 +6,7 @@ import pdc.connection.AdminConnection;
 import pdc.logger.HttpProxyLogger;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -23,18 +24,21 @@ public class AdminHandler {
     private ServerSocketChannel adminServerChannel;
     private SocketChannel adminClientChannel;
 
-    private int bufferSize;
-
     public AdminHandler (String host, int port, Selector selector) throws IOException {
-        this.bufferSize = Integer.parseInt(proxyConfiguration.getProperty("buffer_size"));
         InetSocketAddress listenAddress = new InetSocketAddress(host, port);
 
-        this.adminServerChannel = ServerSocketChannel.open();
-        adminServerChannel.socket().bind(listenAddress);
-        adminServerChannel.configureBlocking(false);
-        adminServerChannel.register(selector, SelectionKey.OP_ACCEPT);
+        try {
 
-        logger.info("New admin handler started");
+            this.adminServerChannel = ServerSocketChannel.open();
+            adminServerChannel.socket().bind(listenAddress);
+            adminServerChannel.configureBlocking(false);
+            adminServerChannel.register(selector, SelectionKey.OP_ACCEPT);
+            logger.info("New admin handler started");
+        } catch (BindException e) {
+            System.out.println("Address already in use");
+        } catch (Exception e) {
+            logger.error("Cant run proxy");
+        }
     }
 
     /**

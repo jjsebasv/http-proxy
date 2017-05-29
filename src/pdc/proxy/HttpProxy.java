@@ -13,7 +13,7 @@ import pdc.config.ProxyConfiguration;
 import pdc.logger.HttpProxyLogger;
 
 
-public class HttpServerSelector {
+public class HttpProxy {
 
     public static void main(String[] args) throws IOException {
 
@@ -30,9 +30,10 @@ public class HttpServerSelector {
 
         Selector selector = Selector.open();
 
-        TCPProtocol HttpClientSelectorProtocol = new HttpClientSelectorProtocol(selector);
+        TCPProtocol HttpClientSelectorProtocol = new ClientHandler(selector);
         AdminHandler adminHandler = new AdminHandler(adminHost, adminPort, selector);
         Admin.generateFirstAdmin();
+
 
         while (true) {
 

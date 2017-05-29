@@ -6,17 +6,16 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.net.BindException;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.nio.charset.Charset;
 
 import nio.TCPProtocol;
 import pdc.config.ProxyConfiguration;
 import pdc.connection.ProxyConnection;
 import pdc.logger.HttpProxyLogger;
-import pdc.parser.ParsingStatus;
 
-public class HttpClientSelectorProtocol implements TCPProtocol {
+public class ClientHandler implements TCPProtocol {
     private int bufferSize;
     private ServerSocketChannel channel;
     private HttpProxyLogger logger;
@@ -27,19 +26,25 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
     InetSocketAddress listenAddress;
 
 
-	public HttpClientSelectorProtocol(Selector selector) throws IOException {
+	public ClientHandler(Selector selector) {
         this.selector = selector;
         proxyConfiguration = ProxyConfiguration.getInstance();
         proxyHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
         proxyPort = Integer.parseInt(proxyConfiguration.getProperty("proxy_port"));
         this.bufferSize = Integer.parseInt(proxyConfiguration.getProperty("buffer_size"));
         this.listenAddress = new InetSocketAddress(proxyHost, proxyPort);
-        channel = ServerSocketChannel.open();
-        channel.configureBlocking(false);
-        channel.socket().bind(listenAddress);
-        channel.register(selector, SelectionKey.OP_ACCEPT);
-        logger = HttpProxyLogger.getInstance();
-        logger.info("Client proxy started");
+        try {
+            channel = ServerSocketChannel.open();
+            channel.configureBlocking(false);
+            channel.socket().bind(listenAddress);
+            channel.register(selector, SelectionKey.OP_ACCEPT);
+            logger = HttpProxyLogger.getInstance();
+            logger.info("Client proxy started");
+        } catch (BindException e) {
+            System.out.println("Address already in use");
+        } catch (Exception e) {
+            logger.error("Cant run proxy");
+        }
 	}
     
 	/**
@@ -198,7 +203,6 @@ public class HttpClientSelectorProtocol implements TCPProtocol {
                 channel.register(selector, SelectionKey.OP_WRITE, connection);
             } else {
                 connection.buffer.clear();
-                connection.setHttpMessage(new HttpMessage());
                 channel.register(selector, SelectionKey.OP_READ, connection);
             }
 
