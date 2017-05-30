@@ -29,6 +29,14 @@ public class HttpMessage {
     private StringBuffer urlBuffer;
     private long bytesRead;
 
+    public ParsingStatus getParsingStatus() {
+        return parsingStatus;
+    }
+
+    public void setParsingStatus(ParsingStatus parsingStatus) {
+        this.parsingStatus = parsingStatus;
+    }
+
     public HttpMessage() {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
@@ -47,13 +55,13 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
-        System.out.println(charBuffer.toString());
         bytesRead += message.limit();
         for (char c: charBuffer.array()) {
             parseRequest(c);
             // FIXME -- We should find a way to skip the lecture of the body
         }
         isBodyRead();
+
         message.flip();
         message.rewind();
     }
@@ -99,11 +107,11 @@ public class HttpMessage {
     }
 
     private void isBodyRead() {
-        if (this.headers.containsKey("Content-Length") && (bytesRead - 2)  == Long.valueOf(this.headers.get("Content-Length"))) {
+        if (this.headers.containsKey("Content-Length") && bytesRead  >= Long.valueOf(this.headers.get("Content-Length"))) {
             this.parsingStatus = ParsingStatus.FINISH;
-            System.out.println("FINISH READING BODY");
-            reset();
+            System.out.println("Finish reading body " + this.url);
         }
+        //TODO QUE HACEMOS CUANDO ON TENEMOS CONTENT LENGTH Y VIENE TRASNFER CHUNKED
     }
 
     private void saveHeader(StringBuffer stringBuffer) {
@@ -116,11 +124,10 @@ public class HttpMessage {
         this.headers.put(stringHeaders[0], stringHeaders[1]);
     }
 
-    public void readResponse (ByteBuffer message) {
+    public void readResponse(ByteBuffer message) {
         message.flip();
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
-        System.out.println(charBuffer.toString());
         for (char c: charBuffer.array()) {
             parseResponse(c);
         }
@@ -178,25 +185,22 @@ public class HttpMessage {
 
     // Si quedan los ultimos 4 bytes en distintas request se rompe todo
     private void parseBody(char c) {
-        if (this.headers.containsKey("Transfer-Encoding") && this.headers.get("Transfer-Encoding").equals("Chunked")) {
-            switch (parsingSectionSection) {
-                case START_LINE:
-                    if (c == '\n') {
-                        this.parsingSectionSection = ParsingSectionSection.END_LINE;
-                    }
-                    break;
-                case END_LINE:
-                    if (c == '\r') {
-                        this.parsingSectionSection = ParsingSectionSection.END_SECTION;
-                        this.parsingStatus = ParsingStatus.FINISH;
-                        reset();
-                    } else {
-                        this.parsingSectionSection = ParsingSectionSection.START_LINE;
-                    }
-                    break;
-                case END_SECTION:
-                    break;
-            }
+        switch (parsingSectionSection) {
+            case START_LINE:
+                if (c == '\n') {
+                    this.parsingSectionSection = ParsingSectionSection.END_LINE;
+                }
+                break;
+            case END_LINE:
+                if (c == '\r') {
+                    this.parsingSectionSection = ParsingSectionSection.END_SECTION;
+                } else {
+                    this.parsingSectionSection = ParsingSectionSection.START_LINE;
+                }
+                break;
+            case END_SECTION:
+                this.parsingStatus = ParsingStatus.FINISH;
+                break;
         }
     }
 
@@ -226,14 +230,13 @@ public class HttpMessage {
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
                     if (!headers.containsKey("Content-Length")) {
                         this.parsingStatus = ParsingStatus.FINISH;
-                        reset();
                     }
                 }
                 break;
         }
     }
 
-    private void reset() {
+    public void reset() {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
         this.headers = new HashMap<String, String>();

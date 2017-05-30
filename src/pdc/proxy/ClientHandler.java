@@ -8,12 +8,15 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.BindException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.channels.*;
+import java.nio.charset.Charset;
 
 import nio.TCPProtocol;
 import pdc.config.ProxyConfiguration;
 import pdc.connection.ProxyConnection;
 import pdc.logger.HttpProxyLogger;
+import pdc.parser.ParsingStatus;
 
 public class ClientHandler implements TCPProtocol {
     private int bufferSize;
@@ -57,8 +60,6 @@ public class ClientHandler implements TCPProtocol {
         ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
         SocketChannel newChannel = null;
 
-        System.out.println("*** accepting ***");
-
         try {
             newChannel = keyChannel.accept();
         } catch (IOException e) {
@@ -99,7 +100,6 @@ public class ClientHandler implements TCPProtocol {
 	public void handleRead(SelectionKey key) throws UnsupportedEncodingException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
 		SocketChannel keyChannel = (SocketChannel) key.channel();
-        System.out.println("*** reading ***");
         int bytesRead = -1;
         connection.buffer = ByteBuffer.allocate(bufferSize);
         try {
@@ -120,11 +120,9 @@ public class ClientHandler implements TCPProtocol {
         }
 
         if (channelIsServerSide(keyChannel, connection)) {
-            System.out.println("*** sending to client ***");
             connection.getHttpMessage().readResponse(connection.buffer);
             sendToClient(key);
         } else {
-            System.out.println("*** sending to server ***");
             connection.getHttpMessage().readRequest(connection.buffer);
             sendToServer(key);
         }
@@ -136,9 +134,6 @@ public class ClientHandler implements TCPProtocol {
             System.out.println("proxy is writing to client");
         }
         writeInChannel(key, connection.getClientChannel());
-        // TODO restart buffers and gilada
-        ((ProxyConnection) key.attachment()).setServerChannel(null);
-        System.out.println("termino el proceso");
     }
 
 
@@ -188,12 +183,7 @@ public class ClientHandler implements TCPProtocol {
     public void handleWrite(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
-        System.out.println("*** writing ***");
-        try {
-            channel.socket().setSendBufferSize(8192);
-        } catch (SocketException e) {
-            logger.warn("Cannot set buffer size");
-        }
+
         if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
             try {
                 System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
@@ -203,14 +193,33 @@ public class ClientHandler implements TCPProtocol {
         try {
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
                 System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+
+            //TODO DELETE THIS
+
+
+            CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
+            String side = channelIsServerSide(channel, connection)? "server" : "client";
+            System.out.println("Sending this to " + side);
+            System.out.println(charBuffer.toString());
+            connection.buffer.flip();
+            connection.buffer.rewind();
+
+            // UNTIL HERE
+
             channel.write(connection.buffer);
+
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
                 System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
 
             if (connection.buffer.hasRemaining()) {
                 channel.register(selector, SelectionKey.OP_WRITE, connection);
             } else {
-                connection.buffer.clear();
+                if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
+                    if (side == "client") {
+                        connection.setServerChannel(null);
+                    }
+                    connection.getHttpMessage().reset();
+                }
                 channel.register(selector, SelectionKey.OP_READ, connection);
             }
 
