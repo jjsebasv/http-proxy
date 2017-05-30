@@ -109,7 +109,6 @@ public class HttpMessage {
     private void isBodyRead() {
         if (this.headers.containsKey("Content-Length") && bytesRead  >= Long.valueOf(this.headers.get("Content-Length"))) {
             this.parsingStatus = ParsingStatus.FINISH;
-            System.out.println("Finish reading body " + this.url);
         }
         //TODO QUE HACEMOS CUANDO ON TENEMOS CONTENT LENGTH Y VIENE TRASNFER CHUNKED
     }

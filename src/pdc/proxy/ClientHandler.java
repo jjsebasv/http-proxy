@@ -215,6 +215,7 @@ public class ClientHandler implements TCPProtocol {
                 channel.register(selector, SelectionKey.OP_WRITE, connection);
             } else {
                 if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
+                    System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
                     if (side == "client") {
                         connection.setServerChannel(null);
                     }
