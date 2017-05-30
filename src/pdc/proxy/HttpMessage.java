@@ -1,7 +1,6 @@
 package pdc.proxy;
 
-import pdc.conversor.Conversor;
-import pdc.parser.ParsingHeaderSection;
+import pdc.parser.ParsingSectionSection;
 import pdc.parser.ParsingSection;
 import pdc.parser.ParsingStatus;
 
@@ -23,7 +22,7 @@ public class HttpMessage {
     private ParsingStatus parsingStatus;
     private Map<String, String> headers;
     private int spaceCount;
-    private ParsingHeaderSection parsingHeaderSection;
+    private ParsingSectionSection parsingSectionSection;
     private StringBuffer headerLine;
     private StringBuffer method;
     private StringBuffer status;
@@ -40,7 +39,7 @@ public class HttpMessage {
         this.urlBuffer = new StringBuffer();
         method =  new StringBuffer();
         status = new StringBuffer();
-        parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
+        parsingSectionSection = ParsingSectionSection.START_LINE;
     }
 
 
@@ -54,7 +53,7 @@ public class HttpMessage {
             parseRequest(c);
             // FIXME -- We should find a way to skip the lecture of the body
         }
-        parseBody();
+        isBodyRead();
         message.flip();
         message.rewind();
     }
@@ -63,18 +62,18 @@ public class HttpMessage {
         return this.url;
     }
 
-    private void parseRequest (char b) {
+    private void parseRequest (char c) {
         switch (parsingSection) {
             case HEAD:
                 if (spaceCount == 0) {
-                    if (b != ' ') {
-                        this.method.append(b);
+                    if (c != ' ') {
+                        this.method.append(c);
                     } else {
                         spaceCount++;
                     }
                 } else if (spaceCount == 1) {
-                    if (b != ' ') {
-                        this.urlBuffer.append(b);
+                    if (c != ' ') {
+                        this.urlBuffer.append(c);
                     } else {
                         spaceCount++;
                         try {
@@ -84,21 +83,22 @@ public class HttpMessage {
                         }
                     }
                 } else {
-                    if (b == '\n') {
+                    if (c == '\n') {
                         this.parsingSection = ParsingSection.HEADERS;
                     }
                 }
                 break;
             case HEADERS:
-                parseHeader(b);
+                parseHeader(c);
                 break;
             case BODY:
+                parseBody(c);
                 break;
 
         }
     }
 
-    private void parseBody() {
+    private void isBodyRead() {
         if (this.headers.containsKey("Content-Length") && (bytesRead - 2)  == Long.valueOf(this.headers.get("Content-Length"))) {
             this.parsingStatus = ParsingStatus.FINISH;
             System.out.println("FINISH READING BODY");
@@ -125,7 +125,7 @@ public class HttpMessage {
             parseResponse(c);
         }
         bytesRead +=getBodyBytes(message);
-        parseBody();
+        isBodyRead();
         message.flip();
         message.rewind();
     }
@@ -152,60 +152,78 @@ public class HttpMessage {
         }
     }
 
-    private void parseResponse(char b) {
+    private void parseResponse(char c) {
         switch (parsingSection) {
             case HEAD:
                 if (spaceCount == 0) {
-                    if (b != ' ') {
-                        this.status.append(b);
+                    if (c != ' ') {
+                        this.status.append(c);
                     } else {
                         spaceCount++;
                     }
                 } else {
-                    if (b == '\n') {
+                    if (c == '\n') {
                         this.parsingSection = ParsingSection.HEADERS;
                     }
                 }
                 break;
             case HEADERS:
-                parseHeader(b);
+                parseHeader(c);
                 break;
             case BODY:
+                parseBody(c);
                 break;
         }
     }
 
-    public ParsingStatus getParsingStatus() {
-        return this.parsingStatus;
-    }
-
-    public Map<String, String> getHaders() {
-        return this.headers;
+    // Si quedan los ultimos 4 bytes en distintas request se rompe todo
+    private void parseBody(char c) {
+        if (this.headers.containsKey("Transfer-Encoding") && this.headers.get("Transfer-Encoding").equals("Chunked")) {
+            switch (parsingSectionSection) {
+                case START_LINE:
+                    if (c == '\n') {
+                        this.parsingSectionSection = ParsingSectionSection.END_LINE;
+                    }
+                    break;
+                case END_LINE:
+                    if (c == '\r') {
+                        this.parsingSectionSection = ParsingSectionSection.END_SECTION;
+                        this.parsingStatus = ParsingStatus.FINISH;
+                        reset();
+                    } else {
+                        this.parsingSectionSection = ParsingSectionSection.START_LINE;
+                    }
+                    break;
+                case END_SECTION:
+                    break;
+            }
+        }
     }
 
     private void parseHeader(char b) {
-        switch (parsingHeaderSection) {
-            case START_HEADER_LINE:
+        switch (parsingSectionSection) {
+            case START_LINE:
                 if (b != '\n' && b != '\r') {
                     this.headerLine.append(b);
                 } else if (b == '\r') {
                     if (this.headerLine.length() == 0) {
-                        this.parsingHeaderSection = ParsingHeaderSection.END_HEADERS_SECTION;
+                        this.parsingSectionSection = ParsingSectionSection.END_SECTION;
                     } else {
-                        this.parsingHeaderSection = ParsingHeaderSection.END_HEADER_LINE;
+                        this.parsingSectionSection = ParsingSectionSection.END_LINE;
                     }
                 }
                 break;
-            case END_HEADER_LINE:
+            case END_LINE:
                 if (b == '\n') {
                     saveHeader(this.headerLine);
-                    this.parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
+                    this.parsingSectionSection = ParsingSectionSection.START_LINE;
                     this.headerLine = new StringBuffer();
                 }
                 break;
-            case END_HEADERS_SECTION:
+            case END_SECTION:
                 if (b == '\n') {
                     this.parsingSection = ParsingSection.BODY;
+                    this.parsingSectionSection = ParsingSectionSection.START_LINE;
                     if (!headers.containsKey("Content-Length")) {
                         this.parsingStatus = ParsingStatus.FINISH;
                         reset();
@@ -224,7 +242,7 @@ public class HttpMessage {
         this.urlBuffer = new StringBuffer();
         method =  new StringBuffer();
         status = new StringBuffer();
-        parsingHeaderSection = ParsingHeaderSection.START_HEADER_LINE;
+        parsingSectionSection = ParsingSectionSection.START_LINE;
         this.bytesRead = 0;
     }
 }
