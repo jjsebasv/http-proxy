@@ -56,7 +56,7 @@ public class HttpMessage {
         message.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
         bytesRead += message.limit();
-        for (char c: charBuffer.array()) {
+        for (char c: charBuffer.array()) { // FIXME : Dijimos en clase, nunca usar array(), esto asume siempre la data está desde el offset 0. Usar get() / charAt(), etc.
             parseRequest(c);
             // FIXME -- We should find a way to skip the lecture of the body
         }
@@ -84,6 +84,7 @@ public class HttpMessage {
                         this.urlBuffer.append(c);
                     } else {
                         spaceCount++;
+                        // FIXME : Esto no maneja una request "tradicional" que no incluye el host en la primera linea (ie: GET / HTTP/1.1)
                         try {
                             this.url = new URL(this.urlBuffer.toString());
                         } catch (MalformedURLException e) {
@@ -140,7 +141,7 @@ public class HttpMessage {
         if (this.bytesRead == 0) {
             int i = 0;
             boolean endLine = false;
-            for (byte b: message.array()) {
+            for (byte b: message.array()) { // FIXME : No usa array()!
                 if (b == 10) {
                     endLine = true;
                 } else {
@@ -220,14 +221,14 @@ public class HttpMessage {
                 if (b == '\n') {
                     saveHeader(this.headerLine);
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
-                    this.headerLine = new StringBuffer();
+                    this.headerLine = new StringBuffer(); // FIXME : No usar StringBuffer si no necesitan sincronizacion, usar StringBuilder
                 }
                 break;
             case END_SECTION:
                 if (b == '\n') {
                     this.parsingSection = ParsingSection.BODY;
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
-                    if (!headers.containsKey("Content-Length")) {
+                    if (!headers.containsKey("Content-Length")) { // FIXME : Los headers HTTP son case-insensitive!!!
                         this.parsingStatus = ParsingStatus.FINISH;
                     }
                 }
@@ -239,11 +240,11 @@ public class HttpMessage {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
         this.headers = new HashMap<String, String>();
-        headerLine = new StringBuffer();
+        headerLine = new StringBuffer(); // FIXME
         spaceCount = 0;
-        this.urlBuffer = new StringBuffer();
-        method =  new StringBuffer();
-        status = new StringBuffer();
+        this.urlBuffer = new StringBuffer(); // FIXME
+        method =  new StringBuffer(); // FIXME
+        status = new StringBuffer(); // FIXME
         parsingSectionSection = ParsingSectionSection.START_LINE;
         this.bytesRead = 0;
     }

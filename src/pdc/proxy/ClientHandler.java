@@ -62,34 +62,25 @@ public class ClientHandler implements TCPProtocol {
 
         try {
             newChannel = keyChannel.accept();
+            newChannel.configureBlocking(false);
+
+            connection.setClientChannel(newChannel);
+            connection.setClientKey(key);
+            newChannel.register(this.selector, SelectionKey.OP_READ, connection);
+            key.attach(connection);
+
+            Socket socket = newChannel.socket();
+            SocketAddress remoteAddress = socket.getRemoteSocketAddress();
+            SocketAddress localAddress = socket.getLocalSocketAddress();
+            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
+                System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
+            }
+            this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
+        } catch (ClosedChannelException e) {
+            this.logger.error("Cannot register key as READ");
         } catch (IOException e) {
             this.logger.error("Cannot accept a connection to the proxy");
         }
-
-        try {
-            newChannel.configureBlocking(false);
-        } catch (IOException e) {
-            this.logger.error("Cannot configure the channel as non blocking");
-        }
-
-        connection.setClientChannel(newChannel);
-        connection.setClientKey(key);
-
-        try {
-            newChannel.register(this.selector, SelectionKey.OP_READ, connection);
-        } catch (ClosedChannelException e) {
-            this.logger.error("Cannot register key as READ");
-        }
-
-        Socket socket = newChannel.socket();
-        SocketAddress remoteAddress = socket.getRemoteSocketAddress();
-        SocketAddress localAddress = socket.getLocalSocketAddress();
-        if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-            System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
-        }
-        this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
-        if (key.attachment() == null)
-            key.attach(connection);
     }
 
 	/**
@@ -101,6 +92,8 @@ public class ClientHandler implements TCPProtocol {
         ProxyConnection connection = (ProxyConnection) key.attachment();
 		SocketChannel keyChannel = (SocketChannel) key.channel();
         int bytesRead = -1;
+
+// FIXME : No allocar un nuevo buffer cada read!
         connection.buffer = ByteBuffer.allocate(bufferSize);
         try {
             bytesRead = keyChannel.read(connection.buffer);
@@ -108,6 +101,7 @@ public class ClientHandler implements TCPProtocol {
             logger.error("Cannot read from socket channel");
         }
 
+// FIXME : Si esta es una conexión de un cliente y ya tengo una conexión con un origin server, que pasa con la misma? Idem al revez
         if (bytesRead == -1) {
             try {
                 keyChannel.close();
@@ -197,6 +191,8 @@ public class ClientHandler implements TCPProtocol {
             //TODO DELETE THIS
 
 
+            // FIXME : Esto asume que este handleWrite se llama SIEMPRE antes del siguiente handleRead y que SIEMPRE logro escribir el 100% de la info que tengo disponible
+            // FIXME parte 2: Esto es además problemático porque pisan el buffer Y comparten el attachment (si fuesen multi-thread podría traer problemas)
             CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
             String side = channelIsServerSide(channel, connection)? "server" : "client";
             System.out.println("Sending this to " + side);
@@ -212,14 +208,16 @@ public class ClientHandler implements TCPProtocol {
                 System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
 
             if (connection.buffer.hasRemaining()) {
+                // FIXME : Esta línea no hace nada, este channel ya está registrado para escritura con este mismo attachment
                 channel.register(selector, SelectionKey.OP_WRITE, connection);
             } else {
                 if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
                     System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
-                    if (side == "client") {
+                    if (side == "client") { // FIXME : Comparando Strings con == ????
                         connection.setServerChannel(null);
                     }
                     connection.getHttpMessage().reset();
+                    // FIXME : Y con el server channel que estoy "descartando" qué pasa? Queda en el limbo?
                 }
                 channel.register(selector, SelectionKey.OP_READ, connection);
             }
@@ -248,7 +246,7 @@ public class ClientHandler implements TCPProtocol {
         // FIXME -- receive key as param
         ProxyConnection connection = (ProxyConnection) key.attachment();
         try {
-            channel.register(selector, SelectionKey.OP_WRITE, connection);
+            channel.register(selector, SelectionKey.OP_WRITE, connection); // FIXME : Posiblemente quieren también registrar OP_READ, aunque más no sea para detectar si te cierran la conexión (-1)
         } catch (ClosedChannelException e) {
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
                 System.out.println("Error registering the key in write mode");

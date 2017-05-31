@@ -67,7 +67,7 @@ public class AdminHandler {
             SocketAddress localAddress = socket.getLocalSocketAddress();
             this.logger.info("[Admin] Accepted new connection from " + localAddress);
         }  catch (ClosedChannelException e) {
-                this.logger.error("[Admin] Closed channel " + clientChannel.toString());
+            this.logger.error("[Admin] Closed channel " + clientChannel.toString());
         } catch (IOException e) {
             this.logger.error("[Admin] Cannot accept a connection to the proxy");
         }
@@ -107,6 +107,7 @@ public class AdminHandler {
      *
      */
     private void respond(AdminResponses response, SocketChannel channel) throws IOException{
+        // FIXME : Por qué asumís que podés escribir y vas a poder escribir todos estos bytes?
         switch (response) {
             case HELP:
                 channel.write(ByteBuffer.wrap(AdminConstants.HELP));

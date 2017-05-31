@@ -23,6 +23,7 @@ public class HttpProxy {
         String adminHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
         int adminPort = Integer.parseInt((proxyConfiguration.getProperty("admin_port")));
 
+        // FIXME : Syso??? Tenes un logger....
         if(verbose) {
             System.out.println("Initializing proxy server");
         }
@@ -30,7 +31,7 @@ public class HttpProxy {
 
         Selector selector = Selector.open();
 
-        TCPProtocol HttpClientSelectorProtocol = new ClientHandler(selector);
+        TCPProtocol httpClientSelectorProtocol = new ClientHandler(selector);
         AdminHandler adminHandler = new AdminHandler(adminHost, adminPort, selector);
         Admin.generateFirstAdmin();
 
@@ -50,7 +51,7 @@ public class HttpProxy {
                     if (key.channel().equals(adminHandler.getAdminServerChannel())) {
                         adminHandler.handleAccept(key);
                     } else {
-                        HttpClientSelectorProtocol.handleAccept(key);
+                        httpClientSelectorProtocol.handleAccept(key);
                     }
                 }
 
@@ -58,12 +59,12 @@ public class HttpProxy {
                     if (key.channel().equals(adminHandler.getAdminChannel())) {
                         adminHandler.handleRead(key);
                     } else {
-                        HttpClientSelectorProtocol.handleRead(key);
+                        httpClientSelectorProtocol.handleRead(key);
                     }
                 }
 
                 if (key.isValid() && key.isWritable()) {
-                	HttpClientSelectorProtocol.handleWrite(key);
+                	httpClientSelectorProtocol.handleWrite(key);
                 }
                 keyIter.remove();
             }

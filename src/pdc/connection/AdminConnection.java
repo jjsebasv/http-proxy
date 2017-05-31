@@ -12,6 +12,7 @@ import java.nio.channels.SocketChannel;
 public class AdminConnection implements Connection {
 
     private SocketChannel clientChannel;
+    // FIXME : Este serverChannel que es? No se usa para nada y sin origin server no tiene sentido
     private SocketChannel serverChannel;
     private Selector selector;
 
@@ -26,6 +27,7 @@ public class AdminConnection implements Connection {
     public AdminConnection (Selector selector) {
         this.setState(AdminState.NO_STATUS);
         this.selector = selector;
+        // FIXME : ooo, ByteBuffer.allocate(Integer.valueOf(proxyConfiguration.getProperty("buffer_size"))
         this.buffer = ByteBuffer.wrap(new byte[Integer.valueOf(proxyConfiguration.getProperty("buffer_size"))]);
     }
 
