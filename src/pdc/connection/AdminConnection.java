@@ -27,8 +27,7 @@ public class AdminConnection implements Connection {
     public AdminConnection (Selector selector) {
         this.setState(AdminState.NO_STATUS);
         this.selector = selector;
-        // FIXME : ooo, ByteBuffer.allocate(Integer.valueOf(proxyConfiguration.getProperty("buffer_size"))
-        this.buffer = ByteBuffer.wrap(new byte[Integer.valueOf(proxyConfiguration.getProperty("buffer_size"))]);
+        this.buffer = ByteBuffer.allocate(Integer.valueOf(proxyConfiguration.getProperty("buffer_size")));
     }
 
     public AdminState getState() {
