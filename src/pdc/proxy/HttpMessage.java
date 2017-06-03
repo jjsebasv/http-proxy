@@ -23,10 +23,10 @@ public class HttpMessage {
     private Map<String, String> headers;
     private int spaceCount;
     private ParsingSectionSection parsingSectionSection;
-    private StringBuffer headerLine;
-    private StringBuffer method;
-    private StringBuffer status;
-    private StringBuffer urlBuffer;
+    private StringBuilder headerLine;
+    private StringBuilder method;
+    private StringBuilder status;
+    private StringBuilder urlBuffer;
     private long bytesRead;
 
     public ParsingStatus getParsingStatus() {
@@ -41,12 +41,12 @@ public class HttpMessage {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
         this.headers = new HashMap<String, String>();
-        headerLine = new StringBuffer();
+        headerLine = new StringBuilder();
         spaceCount = 0;
         bytesRead = 0;
-        this.urlBuffer = new StringBuffer();
-        method =  new StringBuffer();
-        status = new StringBuffer();
+        this.urlBuffer = new StringBuilder();
+        method =  new StringBuilder();
+        status = new StringBuilder();
         parsingSectionSection = ParsingSectionSection.START_LINE;
     }
 
@@ -114,8 +114,8 @@ public class HttpMessage {
         //TODO QUE HACEMOS CUANDO ON TENEMOS CONTENT LENGTH Y VIENE TRASNFER CHUNKED
     }
 
-    private void saveHeader(StringBuffer stringBuffer) {
-        String string = stringBuffer.toString();
+    private void saveHeader(StringBuilder StringBuilder) {
+        String string = StringBuilder.toString();
         String stringHeaders[] = string.split(": ");
         if (stringHeaders.length <= 1){
             System.out.println("Something went wrong here");
@@ -221,7 +221,7 @@ public class HttpMessage {
                 if (b == '\n') {
                     saveHeader(this.headerLine);
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
-                    this.headerLine = new StringBuffer(); // FIXME : No usar StringBuffer si no necesitan sincronizacion, usar StringBuilder
+                    this.headerLine = new StringBuilder();
                 }
                 break;
             case END_SECTION:
@@ -240,11 +240,11 @@ public class HttpMessage {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
         this.headers = new HashMap<String, String>();
-        headerLine = new StringBuffer(); // FIXME
+        headerLine = new StringBuilder();
         spaceCount = 0;
-        this.urlBuffer = new StringBuffer(); // FIXME
-        method =  new StringBuffer(); // FIXME
-        status = new StringBuffer(); // FIXME
+        this.urlBuffer = new StringBuilder();
+        method =  new StringBuilder();
+        status = new StringBuilder();
         parsingSectionSection = ParsingSectionSection.START_LINE;
         this.bytesRead = 0;
     }
