@@ -114,7 +114,7 @@ public class HttpMessage {
         //TODO QUE HACEMOS CUANDO ON TENEMOS CONTENT LENGTH Y VIENE TRASNFER CHUNKED
     }
 
-    private void saveHeader(StringBuilder StringBuilder) {
+    private void saveHeader(String StringBuilder) {
         String string = StringBuilder.toString();
         String stringHeaders[] = string.split(": ");
         if (stringHeaders.length <= 1){
@@ -219,7 +219,7 @@ public class HttpMessage {
                 break;
             case END_LINE:
                 if (b == '\n') {
-                    saveHeader(this.headerLine);
+                    saveHeader(this.headerLine.toString().toLowerCase());
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
                     this.headerLine = new StringBuilder();
                 }
@@ -228,7 +228,7 @@ public class HttpMessage {
                 if (b == '\n') {
                     this.parsingSection = ParsingSection.BODY;
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
-                    if (!headers.containsKey("Content-Length")) { // FIXME : Los headers HTTP son case-insensitive!!!
+                    if (!headers.containsKey("content-length")) {
                         this.parsingStatus = ParsingStatus.FINISH;
                     }
                 }

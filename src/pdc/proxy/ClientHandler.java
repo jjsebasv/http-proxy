@@ -65,7 +65,6 @@ public class ClientHandler implements TCPProtocol {
             newChannel.configureBlocking(false);
 
             connection.setClientChannel(newChannel);
-            connection.setClientKey(key);
             newChannel.register(this.selector, SelectionKey.OP_READ, connection);
             key.attach(connection);
 
