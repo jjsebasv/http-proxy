@@ -23,10 +23,6 @@ public class HttpProxy {
         String adminHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
         int adminPort = Integer.parseInt((proxyConfiguration.getProperty("admin_port")));
 
-        // FIXME : Syso??? Tenes un logger....
-        if(verbose) {
-            System.out.println("Initializing proxy server");
-        }
         HttpProxyLogger.getInstance().info("Initializing proxy server");
 
         Selector selector = Selector.open();

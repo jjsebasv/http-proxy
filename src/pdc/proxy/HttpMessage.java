@@ -32,11 +32,7 @@ public class HttpMessage {
     public ParsingStatus getParsingStatus() {
         return parsingStatus;
     }
-
-    public void setParsingStatus(ParsingStatus parsingStatus) {
-        this.parsingStatus = parsingStatus;
-    }
-
+    
     public HttpMessage() {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
