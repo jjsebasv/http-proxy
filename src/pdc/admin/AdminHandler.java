@@ -48,42 +48,29 @@ public class AdminHandler {
      * buffers related to the channel.
      *
      */
-    public void handleAccept (SelectionKey key) throws IOException {
+    public void handleAccept (SelectionKey key) {
         AdminConnection connection = new AdminConnection(key.selector());
 
         SocketChannel clientChannel = null;
         try {
             clientChannel = this.adminServerChannel.accept();
+            clientChannel.configureBlocking(false);
+            connection.setClientChannel(clientChannel);
+            SelectionKey clientKey = clientChannel.register(key.selector(), SelectionKey.OP_READ);
+            clientKey.attach(connection);
+            this.adminClientChannel = clientChannel;
+
+            clientChannel.write(ByteBuffer.wrap(AdminConstants.WELCOME_MSG));
+            clientChannel.write(ByteBuffer.wrap(AdminConstants.LINE_SEPARATOR));
+
+            Socket socket = clientChannel.socket();
+            SocketAddress localAddress = socket.getLocalSocketAddress();
+            this.logger.info("[Admin] Accepted new connection from " + localAddress);
+        }  catch (ClosedChannelException e) {
+                this.logger.error("[Admin] Closed channel " + clientChannel.toString());
         } catch (IOException e) {
             this.logger.error("[Admin] Cannot accept a connection to the proxy");
         }
-
-        Socket socket = clientChannel.socket();
-
-        try {
-            clientChannel.configureBlocking(false);
-        } catch (IOException e) {
-            this.logger.error("[Admin] Cannot configure the channel as non blocking");
-        }
-
-        connection.setClientChannel(clientChannel);
-
-        SocketAddress remoteAddress = socket.getRemoteSocketAddress();
-        SocketAddress localAddress = socket.getLocalSocketAddress();
-
-        this.logger.info("[Admin] Accepted new connection from " + localAddress);
-
-        try {
-            SelectionKey clientKey = clientChannel.register(key.selector(), SelectionKey.OP_READ);
-            clientKey.attach(connection);
-        } catch (ClosedChannelException e) {
-            this.logger.error("[Admin] Closed channel " + clientChannel.toString());
-        }
-
-        this.adminClientChannel = clientChannel;
-
-        clientChannel.write(ByteBuffer.wrap(AdminConstants.WELCOME_MSG));
-        clientChannel.write(ByteBuffer.wrap(AdminConstants.LINE_SEPARATOR));
     }
 
     /**
