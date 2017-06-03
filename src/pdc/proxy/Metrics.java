@@ -8,7 +8,6 @@ public class Metrics {
     private long totalAccesses;
     private long receivedBytes;
     private long transferedBytes;
-    private long blockedMessages;
     private long convertedCharacters;
     private long flippedImages;
     private long getRequests;
@@ -19,7 +18,6 @@ public class Metrics {
         this.totalAccesses = 0;
         this.receivedBytes = 0;
         this.transferedBytes = 0;
-        this.blockedMessages = 0;
         this.convertedCharacters = 0;
         this.flippedImages = 0;
         this.getRequests = 0;
@@ -78,10 +76,6 @@ public class Metrics {
 
     public void addTransferedBytes(long transferedBytes) {
         this.transferedBytes += transferedBytes;
-    }
-
-    public void addBlockedMessages() {
-        this.blockedMessages++;
     }
 
     public void addConvertedCharacter() {
