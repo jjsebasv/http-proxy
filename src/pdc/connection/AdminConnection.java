@@ -12,8 +12,6 @@ import java.nio.channels.SocketChannel;
 public class AdminConnection implements Connection {
 
     private SocketChannel clientChannel;
-    // FIXME : Este serverChannel que es? No se usa para nada y sin origin server no tiene sentido
-    private SocketChannel serverChannel;
     private Selector selector;
 
     public ByteBuffer buffer;
@@ -38,28 +36,15 @@ public class AdminConnection implements Connection {
         this.state = state;
     }
 
-    @Override
     public void endConnection() throws IOException {
         // TODO - Do this function
     }
 
-    @Override
     public void setClientChannel(SocketChannel channel) {
         this.clientChannel = channel;
     }
 
-    @Override
-    public void setServerChannel(SocketChannel channel) {
-        this.serverChannel = channel;
-    }
-
-    @Override
     public SocketChannel getClientChannel() {
         return this.clientChannel;
-    }
-
-    @Override
-    public SocketChannel getServerChannel() {
-        return this.serverChannel;
     }
 }
