@@ -15,7 +15,7 @@ public interface Connection {
     ProxyConfiguration proxyConfiguration = ProxyConfiguration.getInstance();
 
     public void setClientChannel(SocketChannel channel);
-    
+
     public SocketChannel getClientChannel();
 
     public void endConnection() throws IOException;
