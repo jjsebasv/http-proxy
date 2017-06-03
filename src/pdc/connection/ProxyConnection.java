@@ -18,7 +18,7 @@ public class ProxyConnection implements Connection {
 	public HttpMessage httpMessage;
 
 	public ProxyConnection(Selector selector) {
-        this.buffer = ByteBuffer.wrap(new byte[Integer.valueOf(proxyConfiguration.getProperty("buffer_size"))]);
+        this.buffer = ByteBuffer.allocate(Integer.parseInt(proxyConfiguration.getProperty("buffer_size")));
         this.httpMessage = new HttpMessage();
 	}
 

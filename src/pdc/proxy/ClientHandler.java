@@ -18,6 +18,8 @@ import pdc.connection.ProxyConnection;
 import pdc.logger.HttpProxyLogger;
 import pdc.parser.ParsingStatus;
 
+import static java.nio.channels.SelectionKey.*;
+
 public class ClientHandler implements TCPProtocol {
     private int bufferSize;
     private ServerSocketChannel channel;
@@ -40,7 +42,7 @@ public class ClientHandler implements TCPProtocol {
             channel = ServerSocketChannel.open();
             channel.configureBlocking(false);
             channel.socket().bind(listenAddress);
-            channel.register(selector, SelectionKey.OP_ACCEPT);
+            channel.register(selector, OP_ACCEPT);
             logger = HttpProxyLogger.getInstance();
             logger.info("Client proxy started");
         } catch (BindException e) {
@@ -49,26 +51,22 @@ public class ClientHandler implements TCPProtocol {
             logger.error("Cant run proxy");
         }
 	}
-    
-	/**
+
+    /**
      * Accept connections to HTTP Proxy
      * @param key connection
      * @throws IOException
      */
     public void handleAccept(SelectionKey key) {
-        ProxyConnection connection = new ProxyConnection(key.selector());
-        ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
-        SocketChannel newChannel = null;
-
         try {
-            newChannel = keyChannel.accept();
-            newChannel.configureBlocking(false);
+            SocketChannel clientChannel = ((ServerSocketChannel) key.channel()).accept();
+            clientChannel.configureBlocking(false);
+            ProxyConnection connection = new ProxyConnection(key.selector());
+            connection.setClientChannel(clientChannel);
+            clientChannel.register(key.selector(), OP_READ, connection);
 
-            connection.setClientChannel(newChannel);
-            newChannel.register(this.selector, SelectionKey.OP_READ, connection);
-            key.attach(connection);
-
-            Socket socket = newChannel.socket();
+            /* Logs and information */
+            Socket socket = clientChannel.socket();
             SocketAddress remoteAddress = socket.getRemoteSocketAddress();
             SocketAddress localAddress = socket.getLocalSocketAddress();
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
@@ -82,51 +80,75 @@ public class ClientHandler implements TCPProtocol {
         }
     }
 
-	/**
+    /**
      * Read from the socket channel
      * @param key
      * @throws IOException
      */
-	public void handleRead(SelectionKey key) throws UnsupportedEncodingException {
+    public void handleRead(SelectionKey key) {
+        /* Client socket channel has pending data */
+        SocketChannel keyChannel = (SocketChannel) key.channel();
         ProxyConnection connection = (ProxyConnection) key.attachment();
-		SocketChannel keyChannel = (SocketChannel) key.channel();
-        int bytesRead = -1;
 
-// FIXME : No allocar un nuevo buffer cada read!
-        connection.buffer = ByteBuffer.allocate(bufferSize);
         try {
-            bytesRead = keyChannel.read(connection.buffer);
-        } catch (IOException e) {
+            long bytesRead = keyChannel.read(connection.buffer);
+            String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
+            System.out.println("Bytes read " + bytesRead + " from " + side);
+
+            if (bytesRead == -1) { // Did the other end close?
+                keyChannel.close();
+            } else if (bytesRead > 0) {
+               if (channelIsServerSide(keyChannel, connection)) {
+                   connection.getHttpMessage().readResponse(connection.buffer);
+                   sendToClient(key);
+               } else {
+                   connection.getHttpMessage().readRequest(connection.buffer);
+                   sendToServer(key);
+               }
+               logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
+            }
+        }
+        catch (IOException e) {
             logger.error("Cannot read from socket channel");
         }
+    }
 
-// FIXME : Si esta es una conexión de un cliente y ya tengo una conexión con un origin server, que pasa con la misma? Idem al revez
-        if (bytesRead == -1) {
-            try {
-                keyChannel.close();
-            } catch (IOException e) {
-                logger.error("Cannot close socket channel");
-            }
-            key.cancel();
-            logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
-            return;
-        }
+    public void handleWrite(SelectionKey key) throws IOException {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        // Prepare buffer for writing
+        //connection.buffer.flip();
+        SocketChannel clntChan = (SocketChannel) key.channel();
 
-        if (channelIsServerSide(keyChannel, connection)) {
-            connection.getHttpMessage().readResponse(connection.buffer);
-            sendToClient(key);
-        } else {
-            connection.getHttpMessage().readRequest(connection.buffer);
-            sendToServer(key);
+        CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
+        String side = channelIsServerSide(clntChan, connection)? "server" : "client";
+        System.out.println("Sending this to " + side);
+        System.out.println(charBuffer.toString());
+        connection.buffer.flip();
+        connection.buffer.rewind();
+
+        // UNTIL HERE
+
+        long bytesWritten = clntChan.write(connection.buffer);
+        System.out.println("Bytes written " + bytesWritten + " to " + side);
+
+        if (!connection.buffer.hasRemaining()) { // Buffer completely written?
+            // Nothing left, so no longer interested in writes
+            key.interestOps(OP_READ);
+        } else if (key.interestOps() != OP_READ) {
+            // We now can read again
+            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
+                System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+            key.interestOps(OP_READ | OP_WRITE);
         }
-	}
+        connection.buffer.compact(); // Make room for more data to be read in
+    }
 
     private void sendToClient(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
             System.out.println("proxy is writing to client");
         }
-        writeInChannel(key, connection.getClientChannel());
+        writeInChannel(key);
     }
 
 
@@ -139,14 +161,14 @@ public class ClientHandler implements TCPProtocol {
                 SocketChannel serverChannel = SocketChannel.open(hostAddress);
                 logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
                 serverChannel.configureBlocking(false);
-                serverChannel.register(this.selector, SelectionKey.OP_READ, connection);
+                serverChannel.register(key.selector(), OP_READ, connection);
                 connection.setServerChannel(serverChannel);
             }
 
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
                 System.out.println("Proxy is writing to: " + connection.getHttpMessage().getUrl());
             }
-            writeInChannel(key, connection.getServerChannel());
+            writeInChannel(key);
         }
         catch(ClosedByInterruptException e) {
             logger.error(e.toString());
@@ -173,60 +195,6 @@ public class ClientHandler implements TCPProtocol {
         }
     }
 
-    public void handleWrite(SelectionKey key) {
-        ProxyConnection connection = (ProxyConnection) key.attachment();
-        SocketChannel channel = (SocketChannel) key.channel();
-
-        if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-            try {
-                System.out.println("socket can send " + channel.socket().getSendBufferSize() + " bytes per write operation");
-            } catch (SocketException e) {
-                logger.warn("Cannot get buffer size");
-            }
-        try {
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
-
-            //TODO DELETE THIS
-
-
-            // FIXME : Esto asume que este handleWrite se llama SIEMPRE antes del siguiente handleRead y que SIEMPRE logro escribir el 100% de la info que tengo disponible
-            // FIXME parte 2: Esto es además problemático porque pisan el buffer Y comparten el attachment (si fuesen multi-thread podría traer problemas)
-            CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-            String side = channelIsServerSide(channel, connection)? "server" : "client";
-            System.out.println("Sending this to " + side);
-            System.out.println(charBuffer.toString());
-            connection.buffer.flip();
-            connection.buffer.rewind();
-
-            // UNTIL HERE
-
-            channel.write(connection.buffer);
-
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
-
-            if (connection.buffer.hasRemaining()) {
-                // FIXME : Esta línea no hace nada, este channel ya está registrado para escritura con este mismo attachment
-                channel.register(selector, SelectionKey.OP_WRITE, connection);
-            } else {
-                if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
-                    System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
-                    if (side == "client") { // FIXME : Comparando Strings con == ????
-                        connection.setServerChannel(null);
-                    }
-                    connection.getHttpMessage().reset();
-                    // FIXME : Y con el server channel que estoy "descartando" qué pasa? Queda en el limbo?
-                }
-                channel.register(selector, SelectionKey.OP_READ, connection);
-            }
-
-        } catch (IOException e) {
-            logger.warn("Connection closed by client");
-        }
-    }
-
-
 
     /**
      * Ask if a channel is server side
@@ -237,18 +205,10 @@ public class ClientHandler implements TCPProtocol {
     	return channel.equals(connection.getServerChannel());
     }
 
-
 	/**
      * Write data to a specific channel
      */
-    public void writeInChannel(SelectionKey key, SocketChannel channel) {
-        // FIXME -- receive key as param
-        ProxyConnection connection = (ProxyConnection) key.attachment();
-        try {
-            channel.register(selector, SelectionKey.OP_WRITE, connection); // FIXME : Posiblemente quieren también registrar OP_READ, aunque más no sea para detectar si te cierran la conexión (-1)
-        } catch (ClosedChannelException e) {
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                System.out.println("Error registering the key in write mode");
-        }
+    public void writeInChannel(SelectionKey key) {
+        key.interestOps(OP_WRITE);
     }
 }
