@@ -35,7 +35,7 @@ public class AdminHandler {
             adminServerChannel.register(selector, SelectionKey.OP_ACCEPT);
             logger.info("New admin handler started");
         } catch (BindException e) {
-            System.out.println("Address already in use");
+            logger.error("Address already in use");
         } catch (Exception e) {
             logger.error("Cant run proxy");
         }
