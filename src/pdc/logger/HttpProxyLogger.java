@@ -50,14 +50,6 @@ public class HttpProxyLogger {
     }
 
     /**
-     * Set a log with type TRACE
-     * @param s
-     */
-    public void trace(String s) {
-        logger.trace(s);
-    }
-
-    /**
      * Set a log with type WARN
      * @param s
      */
