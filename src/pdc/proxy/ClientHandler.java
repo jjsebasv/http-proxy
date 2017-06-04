@@ -93,9 +93,10 @@ public class ClientHandler implements TCPProtocol {
             long bytesRead = keyChannel.read(connection.buffer);
 
             String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
-            System.out.println("Bytes read " + bytesRead + " from " + side);
+            //System.out.println("Bytes read " + bytesRead + " from " + side);
 
             if (bytesRead == -1) { // Did the other end close?
+                logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
                 keyChannel.close();
             } else if (bytesRead > 0) {
                if (channelIsServerSide(keyChannel, connection)) {
@@ -105,7 +106,6 @@ public class ClientHandler implements TCPProtocol {
                    connection.getHttpMessage().readRequest(connection.buffer);
                    sendToServer(key);
                }
-               logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
             }
         }
         catch (IOException e) {
@@ -122,14 +122,14 @@ public class ClientHandler implements TCPProtocol {
         // DELETE THIS
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
         String side = channelIsServerSide(channel, connection)? "server" : "client";
-        System.out.println("Sending this to " + side);
+        //System.out.println("Sending this to " + side);
         System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
         // UNTIL HERE
 
         long bytesWritten = channel.write(connection.buffer);
-        System.out.println("Bytes written " + bytesWritten + " to " + side);
+        //System.out.println("Bytes written " + bytesWritten + " to " + side);
 
         if (!connection.buffer.hasRemaining()) { // Buffer completely written?
             // Nothing left, so no longer interested in writes
