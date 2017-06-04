@@ -8,6 +8,7 @@ import java.net.MalformedURLException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
 import java.util.HashMap;
 import java.util.Map;
 import java.net.URL;
@@ -50,14 +51,18 @@ public class HttpMessage {
     public void readRequest(ByteBuffer message) {
         message.flip();
         message.rewind();
-        CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
-        bytesRead += message.limit();
-        for (char c: charBuffer.array()) { // FIXME : Dijimos en clase, nunca usar array(), esto asume siempre la data está desde el offset 0. Usar get() / charAt(), etc.
-            parseRequest(c);
-            // FIXME -- We should find a way to skip the lecture of the body
-        }
-        isBodyRead();
 
+        CharsetDecoder decoder = Charset.forName("ISO_8859_1").newDecoder();
+        CharBuffer messageAsChar = CharBuffer.allocate(message.capacity());
+        decoder.decode(message, messageAsChar, false);
+        messageAsChar.flip();
+        while (messageAsChar.hasRemaining()) {
+            char c = messageAsChar.get();
+            parseRequest(c);
+        }
+
+        bytesRead += message.limit();
+        isBodyRead();
         message.flip();
         message.rewind();
     }
@@ -123,16 +128,23 @@ public class HttpMessage {
     public void readResponse(ByteBuffer message) {
         message.flip();
         message.rewind();
-        CharBuffer charBuffer = Charset.forName("UTF-8").decode(message);
-        for (char c: charBuffer.array()) {
+
+        CharsetDecoder decoder = Charset.forName("ISO_8859_1").newDecoder();
+        CharBuffer messageAsChar = CharBuffer.allocate(message.capacity());
+        decoder.decode(message, messageAsChar, false);
+        messageAsChar.flip();
+        while (messageAsChar.hasRemaining()) {
+            char c = messageAsChar.get();
             parseResponse(c);
         }
-        bytesRead +=getBodyBytes(message);
+        //bytesRead +=getBodyBytes(message);
+        bytesRead += message.limit();
         isBodyRead();
         message.flip();
         message.rewind();
     }
 
+    // TODO -- delete this function
     private int getBodyBytes(ByteBuffer message) {
         if (this.bytesRead == 0) {
             int i = 0;

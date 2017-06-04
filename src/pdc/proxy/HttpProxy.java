@@ -51,7 +51,7 @@ public class HttpProxy {
                     }
                 }
 
-                if (key.isReadable()) {
+                if (key.isValid() && key.isReadable()) {
                     if (key.channel().equals(adminHandler.getAdminChannel())) {
                         adminHandler.handleRead(key);
                     } else {

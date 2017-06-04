@@ -98,6 +98,8 @@ public class ClientHandler implements TCPProtocol {
             if (bytesRead == -1) { // Did the other end close?
                 logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
                 keyChannel.close();
+                //key.cancel();
+                connection.getHttpMessage().reset();
             } else if (bytesRead > 0) {
                if (channelIsServerSide(keyChannel, connection)) {
                    connection.getHttpMessage().readResponse(connection.buffer);
@@ -139,6 +141,25 @@ public class ClientHandler implements TCPProtocol {
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
                 System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
             key.interestOps(OP_READ | OP_WRITE);
+
+            if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
+                // We now can read again
+                key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+            }
+
+            if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
+                System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
+                if (side.equals("client")) {
+                    if (connection.getServerChannel() != null) {
+                        connection.getServerChannel().close();
+                        connection.setServerChannel(null);
+                    }
+                }
+                key.channel().close();
+                connection.getHttpMessage().reset();
+                // FIXME : Y con el server channel que estoy "descartando" qué pasa? Queda en el limbo?
+            }
+
         }
         connection.buffer.compact(); // Make room for more data to be read in
     }
