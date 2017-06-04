@@ -21,22 +21,18 @@ import pdc.parser.ParsingStatus;
 import static java.nio.channels.SelectionKey.*;
 
 public class ClientHandler implements TCPProtocol {
-    private int bufferSize;
     private ServerSocketChannel channel;
     private HttpProxyLogger logger;
     private ProxyConfiguration proxyConfiguration;
-    private Selector selector;
     String proxyHost;
     int proxyPort;
     InetSocketAddress listenAddress;
 
 
 	public ClientHandler(Selector selector) {
-        this.selector = selector;
         proxyConfiguration = ProxyConfiguration.getInstance();
         proxyHost = String.valueOf(proxyConfiguration.getProperty("proxy_host"));
         proxyPort = Integer.parseInt(proxyConfiguration.getProperty("proxy_port"));
-        this.bufferSize = Integer.parseInt(proxyConfiguration.getProperty("buffer_size"));
         this.listenAddress = new InetSocketAddress(proxyHost, proxyPort);
         try {
             channel = ServerSocketChannel.open();
@@ -86,12 +82,16 @@ public class ClientHandler implements TCPProtocol {
      * @throws IOException
      */
     public void handleRead(SelectionKey key) {
-        /* Client socket channel has pending data */
         SocketChannel keyChannel = (SocketChannel) key.channel();
         ProxyConnection connection = (ProxyConnection) key.attachment();
+        /* Client socket channel has pending data */
+        if (connection.getClientKey() == null) {
+            connection.setClientKey(key);
+        }
 
         try {
             long bytesRead = keyChannel.read(connection.buffer);
+
             String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
             System.out.println("Bytes read " + bytesRead + " from " + side);
 
@@ -117,18 +117,18 @@ public class ClientHandler implements TCPProtocol {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         // Prepare buffer for writing
         //connection.buffer.flip();
-        SocketChannel clntChan = (SocketChannel) key.channel();
+        SocketChannel channel = (SocketChannel) key.channel();
 
+        // DELETE THIS
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-        String side = channelIsServerSide(clntChan, connection)? "server" : "client";
+        String side = channelIsServerSide(channel, connection)? "server" : "client";
         System.out.println("Sending this to " + side);
         System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
-
         // UNTIL HERE
 
-        long bytesWritten = clntChan.write(connection.buffer);
+        long bytesWritten = channel.write(connection.buffer);
         System.out.println("Bytes written " + bytesWritten + " to " + side);
 
         if (!connection.buffer.hasRemaining()) { // Buffer completely written?
@@ -145,10 +145,7 @@ public class ClientHandler implements TCPProtocol {
 
     private void sendToClient(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-            System.out.println("proxy is writing to client");
-        }
-        writeInChannel(key);
+        writeInChannel(connection.getClientKey());
     }
 
 
@@ -161,14 +158,15 @@ public class ClientHandler implements TCPProtocol {
                 SocketChannel serverChannel = SocketChannel.open(hostAddress);
                 logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
                 serverChannel.configureBlocking(false);
-                serverChannel.register(key.selector(), OP_READ, connection);
+                SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
+                connection.setServerKey(serverKey);
                 connection.setServerChannel(serverChannel);
             }
 
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
                 System.out.println("Proxy is writing to: " + connection.getHttpMessage().getUrl());
             }
-            writeInChannel(key);
+            writeInChannel(connection.getServerKey());
         }
         catch(ClosedByInterruptException e) {
             logger.error(e.toString());

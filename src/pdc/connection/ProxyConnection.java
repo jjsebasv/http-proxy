@@ -14,7 +14,19 @@ public class ProxyConnection implements Connection {
 
 	private SocketChannel clientChannel;
 	private SocketChannel serverChannel;
-	public ByteBuffer buffer;
+	private SelectionKey serverKey;
+
+    public void setClientKey(SelectionKey clientKey) {
+        this.clientKey = clientKey;
+    }
+
+    private SelectionKey clientKey;
+
+    public SelectionKey getServerKey() {
+        return serverKey;
+    }
+
+    public ByteBuffer buffer;
 	public HttpMessage httpMessage;
 
 	public ProxyConnection(Selector selector) {
@@ -45,5 +57,13 @@ public class ProxyConnection implements Connection {
 
     public void endConnection() {
         // TODO - do this function
+    }
+
+	public void setServerKey(SelectionKey serverKey) {
+		this.serverKey = serverKey;
+	}
+
+    public SelectionKey getClientKey() {
+	    return this.clientKey;
     }
 }
