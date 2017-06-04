@@ -60,7 +60,11 @@ public class HttpProxy {
                 }
 
                 if (key.isValid() && key.isWritable()) {
-                	httpClientSelectorProtocol.handleWrite(key);
+                    if (key.channel().equals(adminHandler.getAdminChannel())) {
+                        adminHandler.handleWrite(key);
+                    } else {
+                        httpClientSelectorProtocol.handleWrite(key);
+                    }
                 }
                 keyIter.remove();
             }

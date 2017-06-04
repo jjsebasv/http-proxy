@@ -1,5 +1,7 @@
 package pdc.connection;
 
+import pdc.admin.AdminResponses;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -13,6 +15,8 @@ public class AdminConnection implements Connection {
 
     private SocketChannel clientChannel;
     private Selector selector;
+
+    public AdminResponses serverResponse;
 
     public ByteBuffer buffer;
     private AdminState state;

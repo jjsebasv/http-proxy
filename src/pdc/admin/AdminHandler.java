@@ -3,6 +3,7 @@ package pdc.admin;
 import com.sun.corba.se.spi.activation.Server;
 import pdc.config.ProxyConfiguration;
 import pdc.connection.AdminConnection;
+import pdc.connection.Connection;
 import pdc.logger.HttpProxyLogger;
 
 import java.io.IOException;
@@ -23,9 +24,11 @@ public class AdminHandler {
     private AdminParser parser = new AdminParser();
     private ServerSocketChannel adminServerChannel;
     private SocketChannel adminClientChannel;
+    private SocketChannel serverChannel;
+    private InetSocketAddress listenAddress;
 
     public AdminHandler (String host, int port, Selector selector) throws IOException {
-        InetSocketAddress listenAddress = new InetSocketAddress(host, port);
+        listenAddress = new InetSocketAddress(host, port);
 
         try {
 
@@ -89,109 +92,143 @@ public class AdminHandler {
             channel.close();
             key.cancel();
         } else if(bytesRead > 0) {
-            AdminResponses response = parser.parseCommands(connection.buffer);
-            respond(response, channel);
-            connection.buffer.clear();
+            if (channel.equals(adminClientChannel)) {
+                System.out.println("client is writing, should go to server");
+                key.interestOps(SelectionKey.OP_WRITE);
+            } else {
+                System.out.println("server is writing, should go to client");
+                AdminResponses response = parser.parseCommands(connection.buffer);
+                //respond(response, channel);
+                connection.buffer.clear();
+            }
         } else {
             logger.debug("[Admin] Partial reading");
         }
 
     }
 
+    public void handleWrite(SelectionKey key) throws  IOException {
+        AdminConnection connection = (AdminConnection) key.attachment();
+        SocketChannel channel = (SocketChannel) key.channel();
+
+        if (channel.equals(adminClientChannel)) {
+            // This would work as the admin server working
+            connection.serverResponse = parser.parseCommands(connection.buffer);
+            connection.buffer.clear();
+            respond(connection.serverResponse, connection.buffer);
+            connection.buffer.rewind();
+            channel.write(connection.buffer);
+            key.interestOps(SelectionKey.OP_READ);
+            /*
+            connection.buffer.clear();
+            respond(connection.serverResponse, connection.buffer);
+            channel.write(connection.buffer);
+            if (!connection.buffer.hasRemaining()) {
+                key.interestOps(SelectionKey.OP_READ);
+            } else {
+                // TODO -- handle error here
+                System.out.println("Something went wrong");
+            }
+            */
+        } else {
+
+        }
+
+    }
 
     /**
      * Writes into the admin client the reponse to it request.
      *
      * @param response the response indicator
-     * @param channel the channel to which it should write
+     * @param buffer the channel to which it should write
      *
      */
-    private void respond(AdminResponses response, SocketChannel channel) throws IOException{
+    private void respond(AdminResponses response, ByteBuffer buffer) throws IOException{
         // FIXME : Por qué asumís que podés escribir y vas a poder escribir todos estos bytes?
         switch (response) {
             case HELP:
-                channel.write(ByteBuffer.wrap(AdminConstants.HELP));
+                buffer.put(AdminConstants.HELP);
                 break;
             case LOG_REQUEST:
-                channel.write(ByteBuffer.wrap(AdminConstants.LOG_REQUEST));
+                buffer.put(AdminConstants.LOG_REQUEST);
                 break;
             case ERROR_USERNAME:
-                channel.write(ByteBuffer.wrap(AdminConstants.WRONG_USERNAME));
+                buffer.put(AdminConstants.WRONG_USERNAME);
                 break;
             case KNOWN_USERNAME:
-                channel.write(ByteBuffer.wrap(AdminConstants.KNOWN_USER));
+                buffer.put(AdminConstants.KNOWN_USER);
                 break;
             case ERROR_PASSWORD:
-                channel.write(ByteBuffer.wrap(AdminConstants.WRONG_PASSWORD));
+                buffer.put(AdminConstants.WRONG_PASSWORD);
                 break;
             case CONNECTED:
-                channel.write(ByteBuffer.wrap(AdminConstants.LOGGED_IN));
+                buffer.put(AdminConstants.LOGGED_IN);
                 break;
             case LOG_OUT:
-                channel.write(ByteBuffer.wrap(AdminConstants.LOGGED_OUT));
+                buffer.put(AdminConstants.LOGGED_OUT);
                 break;
             case ALL_METRICS:
-                channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("all")));
+                buffer.put(AdminConstants.metricsRequested("all"));
                 break;
             case BYTES_SENT:
-                channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("bytes_sent")));
+                buffer.put(AdminConstants.metricsRequested("bytes_sent"));
                 break;
             case BYTES_RECEIVED:
-                channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("bytes_received")));
+                buffer.put(AdminConstants.metricsRequested("bytes_received"));
                 break;
             case HISTOGRAMS:
-                channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("method_histograms")));
+                buffer.put(AdminConstants.metricsRequested("method_histograms"));
                 break;
             case CONVERTED_CHARS:
-                channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("converted_chars")));
+                buffer.put(AdminConstants.metricsRequested("converted_chars"));
                 break;
             case FLIPPED_IMAGES:
-                channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("flipped_immages")));
+                buffer.put(AdminConstants.metricsRequested("flipped_immages"));
                 break;
             case TOTAL_ACCESSES:
-                channel.write(ByteBuffer.wrap(AdminConstants.metricsRequested("total_acceses")));
+                buffer.put(AdminConstants.metricsRequested("total_acceses"));
                 break;
             case USER_IN_USE:
-                channel.write(ByteBuffer.wrap(AdminConstants.USERNAME_IN_USE));
+                buffer.put(AdminConstants.USERNAME_IN_USE);
                 break;
             case NEW_USER_OK:
-                channel.write(ByteBuffer.wrap(AdminConstants.ADDING_PASS));
+                buffer.put(AdminConstants.ADDING_PASS);
                 break;
             case USER_CREATED:
-                channel.write(ByteBuffer.wrap(AdminConstants.USER_CREATED));
+                buffer.put(AdminConstants.USER_CREATED);
                 break;
             case ADD_USER:
-                channel.write(ByteBuffer.wrap(AdminConstants.ADDING_USER));
+                buffer.put(AdminConstants.ADDING_USER);
                 break;
             case BLACK_LIST:
-                channel.write(ByteBuffer.wrap(AdminConstants.ADDING_BLACKLIST));
+                buffer.put(AdminConstants.ADDING_BLACKLIST);
                 break;
             case HOST_BLOCKED:
-                channel.write(ByteBuffer.wrap(AdminConstants.BLOCKED_HOST));
+                buffer.put(AdminConstants.BLOCKED_HOST);
                 break;
             case PORT_BLOCKED:
-                channel.write(ByteBuffer.wrap(AdminConstants.BLOCKED_PORT));
+                buffer.put(AdminConstants.BLOCKED_PORT);
                 break;
             case LEET_ON:
-                channel.write(ByteBuffer.wrap(AdminConstants.LEET_ON));
+                buffer.put(AdminConstants.LEET_ON);
                 break;
             case LEET_OFF:
-                channel.write(ByteBuffer.wrap(AdminConstants.LEET_OFF));
+                buffer.put(AdminConstants.LEET_OFF);
                 break;
             case FLIP_ON:
-                channel.write(ByteBuffer.wrap(AdminConstants.FLIP_ON));
+                buffer.put(AdminConstants.FLIP_ON);
                 break;
             case FLIP_OFF:
-                channel.write(ByteBuffer.wrap(AdminConstants.FLIP_OFF));
+                buffer.put(AdminConstants.FLIP_OFF);
                 break;
             case UNAUTHORIZED:
-                channel.write(ByteBuffer.wrap(AdminConstants.UNAUTHORIZED));
+                buffer.put(AdminConstants.UNAUTHORIZED);
                 break;
             case ERROR_BAD_REQUEST:
-                channel.write(ByteBuffer.wrap(AdminConstants.WRONG_COMMAND));
+                buffer.put(AdminConstants.WRONG_COMMAND);
                 break;
             default:
-                channel.write(ByteBuffer.wrap(AdminConstants.INTERNAL_ERROR));
+                buffer.wrap(AdminConstants.INTERNAL_ERROR);
                 break;
 
         }
