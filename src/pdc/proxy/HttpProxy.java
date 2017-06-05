@@ -10,6 +10,7 @@ import nio.TCPProtocol;
 import pdc.admin.Admin;
 import pdc.admin.AdminHandler;
 import pdc.config.ProxyConfiguration;
+import pdc.connection.Connection;
 import pdc.logger.HttpProxyLogger;
 
 
@@ -43,7 +44,7 @@ public class HttpProxy {
             while (keyIter.hasNext()) {
                 SelectionKey key = keyIter.next();
 
-                if (key.isAcceptable()) {
+                if (key.isValid() && key.isAcceptable()) {
                     if (key.channel().equals(adminHandler.getAdminServerChannel())) {
                         adminHandler.handleAccept(key);
                     } else {
@@ -52,7 +53,7 @@ public class HttpProxy {
                 }
 
                 if (key.isValid() && key.isReadable()) {
-                    if (key.channel().equals(adminHandler.getAdminChannel())) {
+                    if (((Connection) key.attachment()).getType().equals(Connection.ConnectionType.ADMIN)) {
                         adminHandler.handleRead(key);
                     } else {
                         httpClientSelectorProtocol.handleRead(key);
@@ -60,7 +61,7 @@ public class HttpProxy {
                 }
 
                 if (key.isValid() && key.isWritable()) {
-                    if (key.channel().equals(adminHandler.getAdminChannel())) {
+                    if (((Connection) key.attachment()).getType().equals(Connection.ConnectionType.ADMIN)) {
                         adminHandler.handleWrite(key);
                     } else {
                         httpClientSelectorProtocol.handleWrite(key);

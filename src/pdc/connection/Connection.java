@@ -12,6 +12,8 @@ import java.nio.channels.SocketChannel;
  */
 public interface Connection {
 
+    public enum ConnectionType {ADMIN, HTTP};
+
     ProxyConfiguration proxyConfiguration = ProxyConfiguration.getInstance();
 
     public void setClientChannel(SocketChannel channel);
@@ -19,4 +21,6 @@ public interface Connection {
     public SocketChannel getClientChannel();
 
     public void endConnection() throws IOException;
+
+    public ConnectionType getType();
 }

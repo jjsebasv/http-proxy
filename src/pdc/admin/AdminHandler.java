@@ -26,15 +26,15 @@ public class AdminHandler {
     private SocketChannel adminClientChannel;
     private SocketChannel serverChannel;
     private InetSocketAddress listenAddress;
+    private boolean firstTime = true;
 
     public AdminHandler (String host, int port, Selector selector) throws IOException {
         listenAddress = new InetSocketAddress(host, port);
 
         try {
-
             this.adminServerChannel = ServerSocketChannel.open();
-            adminServerChannel.socket().bind(listenAddress);
             adminServerChannel.configureBlocking(false);
+            adminServerChannel.socket().bind(listenAddress);
             adminServerChannel.register(selector, SelectionKey.OP_ACCEPT);
             logger.info("New admin handler started");
         } catch (BindException e) {
@@ -52,20 +52,17 @@ public class AdminHandler {
      *
      */
     public void handleAccept (SelectionKey key) {
-        AdminConnection connection = new AdminConnection(key.selector());
-
         SocketChannel clientChannel = null;
         try {
-            clientChannel = this.adminServerChannel.accept();
+            clientChannel = ((ServerSocketChannel) key.channel()).accept();
             clientChannel.configureBlocking(false);
+            AdminConnection connection = new AdminConnection(key.selector());
             connection.setClientChannel(clientChannel);
-            SelectionKey clientKey = clientChannel.register(key.selector(), SelectionKey.OP_READ);
-            clientKey.attach(connection);
+            clientChannel.register(key.selector(), SelectionKey.OP_WRITE, connection);
+
             this.adminClientChannel = clientChannel;
 
-            clientChannel.write(ByteBuffer.wrap(AdminConstants.WELCOME_MSG));
-            clientChannel.write(ByteBuffer.wrap(AdminConstants.LINE_SEPARATOR));
-
+            /* Logs and information */
             Socket socket = clientChannel.socket();
             SocketAddress localAddress = socket.getLocalSocketAddress();
             this.logger.info("[Admin] Accepted new connection from " + localAddress);
@@ -92,16 +89,12 @@ public class AdminHandler {
             channel.close();
             key.cancel();
         } else if(bytesRead > 0) {
-            if (channel.equals(adminClientChannel)) {
-                System.out.println("client is writing, should go to server");
+            if (channel.equals(connection.getClientChannel())) {
+                System.out.println("Send to server");
                 key.interestOps(SelectionKey.OP_WRITE);
-            } else {
-                System.out.println("server is writing, should go to client");
-                AdminResponses response = parser.parseCommands(connection.buffer);
-                //respond(response, channel);
-                connection.buffer.clear();
             }
         } else {
+            // Not really sure about this
             logger.debug("[Admin] Partial reading");
         }
 
@@ -111,29 +104,27 @@ public class AdminHandler {
         AdminConnection connection = (AdminConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
 
-        if (channel.equals(adminClientChannel)) {
-            // This would work as the admin server working
-            connection.serverResponse = parser.parseCommands(connection.buffer);
-            connection.buffer.clear();
-            respond(connection.serverResponse, connection.buffer);
-            connection.buffer.rewind();
-            channel.write(connection.buffer);
-            key.interestOps(SelectionKey.OP_READ);
-            /*
-            connection.buffer.clear();
-            respond(connection.serverResponse, connection.buffer);
-            channel.write(connection.buffer);
-            if (!connection.buffer.hasRemaining()) {
-                key.interestOps(SelectionKey.OP_READ);
+        if (channel.equals(connection.getClientChannel())) {
+            if (firstTime) {
+                channel.write(ByteBuffer.wrap(AdminConstants.WELCOME_MSG));
+                channel.write(ByteBuffer.wrap(AdminConstants.LINE_SEPARATOR));
+                firstTime = false;
             } else {
-                // TODO -- handle error here
-                System.out.println("Something went wrong");
+                // This works as admin server as well
+                System.out.println("Writing in client");
+                connection.buffer.flip();
+                AdminResponses response = parser.parseCommands(connection.buffer);
+
+                connection.buffer.clear();
+                respond(response, connection.buffer);
+
+                connection.buffer.flip();
+                channel.write(connection.buffer);
+
             }
-            */
-        } else {
-
+            connection.buffer.clear();
+            key.interestOps(SelectionKey.OP_READ);
         }
-
     }
 
     /**

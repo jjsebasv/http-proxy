@@ -14,12 +14,19 @@ import java.nio.channels.SocketChannel;
 public class AdminConnection implements Connection {
 
     private SocketChannel clientChannel;
+    private SocketChannel serverChannel;
+
+    private SelectionKey serverKey;
+    private SelectionKey clientKey;
+
     private Selector selector;
 
     public AdminResponses serverResponse;
 
     public ByteBuffer buffer;
     private AdminState state;
+
+    private ConnectionType type;
 
     public static enum AdminState {
         LOGGED_IN,
@@ -30,6 +37,7 @@ public class AdminConnection implements Connection {
         this.setState(AdminState.NO_STATUS);
         this.selector = selector;
         this.buffer = ByteBuffer.allocate(Integer.valueOf(proxyConfiguration.getProperty("buffer_size")));
+        this.type = ConnectionType.ADMIN;
     }
 
     public AdminState getState() {
@@ -51,4 +59,30 @@ public class AdminConnection implements Connection {
     public SocketChannel getClientChannel() {
         return this.clientChannel;
     }
+
+    public SocketChannel getServerChannel() {
+        return serverChannel;
+    }
+
+    public SelectionKey getClientKey() {
+        return clientKey;
+    }
+
+    public void setClientKey(SelectionKey clientKey) {
+        this.clientKey = clientKey;
+    }
+
+    public void setServerChannel(SocketChannel serverChannel) {
+        this.serverChannel = serverChannel;
+    }
+
+    public SelectionKey getServerKey() {
+        return serverKey;
+    }
+
+    public void setServerKey(SelectionKey serverKey) {
+        this.serverKey = serverKey;
+    }
+
+    public ConnectionType getType() {return this.type;}
 }
