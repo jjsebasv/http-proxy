@@ -101,6 +101,7 @@ public class ClientHandler implements TCPProtocol {
                 //key.cancel();
                 connection.getHttpMessage().reset();
             } else if (bytesRead > 0) {
+                // FIXME -- Ver que pasa cuando cierro el browser
                if (channelIsServerSide(keyChannel, connection)) {
                    connection.getHttpMessage().readResponse(connection.buffer);
                    sendToClient(key);
