@@ -136,16 +136,11 @@ public class ClientHandler implements TCPProtocol {
         if (!connection.buffer.hasRemaining()) { // Buffer completely written?
             // Nothing left, so no longer interested in writes
             key.interestOps(OP_READ);
-        } else if (key.interestOps() != OP_READ) {
+        } else if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
             // We now can read again
             if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
                 System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
             key.interestOps(OP_READ | OP_WRITE);
-
-            if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
-                // We now can read again
-                key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-            }
 
             if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
                 System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
@@ -228,6 +223,11 @@ public class ClientHandler implements TCPProtocol {
      * Write data to a specific channel
      */
     public void writeInChannel(SelectionKey key) {
-        key.interestOps(OP_WRITE);
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        if (connection.buffer.hasRemaining()) {
+            key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+        } else {
+            key.interestOps(SelectionKey.OP_WRITE);
+        }
     }
 }
