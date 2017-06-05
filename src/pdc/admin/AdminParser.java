@@ -32,7 +32,7 @@ public class AdminParser {
 
         AdminCommands command = AdminCommands.WRONG_COMMAND;
         byte[] auxBuffer = ByteBuffer.allocate(messageBuffer.capacity()).array();
-        messageBuffer.flip();
+        //messageBuffer.flip();
 
         byte b;
         int i = 0;

@@ -29,9 +29,12 @@ public class ProxyConnection implements Connection {
     public ByteBuffer buffer;
 	public HttpMessage httpMessage;
 
+	private ConnectionType type;
+
 	public ProxyConnection(Selector selector) {
         this.buffer = ByteBuffer.allocate(Integer.parseInt(proxyConfiguration.getProperty("buffer_size")));
         this.httpMessage = new HttpMessage();
+		this.type = ConnectionType.HTTP;
 	}
 
 
@@ -66,4 +69,6 @@ public class ProxyConnection implements Connection {
     public SelectionKey getClientKey() {
 	    return this.clientKey;
     }
+
+	public ConnectionType getType() {return this.type;}
 }
