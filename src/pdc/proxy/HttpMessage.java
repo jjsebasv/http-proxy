@@ -29,6 +29,7 @@ public class HttpMessage {
     private StringBuilder status;
     private StringBuilder urlBuffer;
     private long bytesRead;
+    private long bodyBytes;
 
     private boolean request, response;
 
@@ -43,6 +44,7 @@ public class HttpMessage {
         headerLine = new StringBuilder();
         spaceCount = 0;
         bytesRead = 0;
+        bodyBytes = 0;
         this.urlBuffer = new StringBuilder();
         method =  new StringBuilder();
         status = new StringBuilder();
@@ -115,7 +117,7 @@ public class HttpMessage {
 
     private void isBodyRead() {
         // FIXME the comparisson here should not be with bytes read but with body length
-        if (this.headers.containsKey("content-length") && bytesRead  >= Long.valueOf(this.headers.get("content-length"))) {
+        if (this.headers.containsKey("content-length") && bodyBytes  >= Long.valueOf(this.headers.get("content-length"))) {
             this.parsingStatus = ParsingStatus.FINISH;
         }
         //TODO QUE HACEMOS CUANDO ON TENEMOS CONTENT LENGTH Y VIENE TRASNFER CHUNKED
@@ -194,6 +196,7 @@ public class HttpMessage {
                 break;
             case BODY:
                 parseBody(c);
+                bodyBytes++;
                 break;
         }
     }
@@ -262,6 +265,7 @@ public class HttpMessage {
         status = new StringBuilder();
         parsingSectionSection = ParsingSectionSection.START_LINE;
         this.bytesRead = 0;
+        this.bodyBytes = 0;
         this.response = false;
         this.request = false;
     }

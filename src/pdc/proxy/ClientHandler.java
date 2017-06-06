@@ -108,7 +108,7 @@ public class ClientHandler implements TCPProtocol {
                } else {
                    connection.getHttpMessage().readRequest(connection.buffer);
                    sendToServer(key);
-                   connection.getHttpMessage().reset();
+                   //connection.getHttpMessage().reset();
                }
             }
         }
@@ -147,6 +147,8 @@ public class ClientHandler implements TCPProtocol {
                         connection.setServerChannel(null);
                     }
                     closeChannels(key);
+                    connection.getHttpMessage().reset();
+                } else {
                     connection.getHttpMessage().resetRequest();
                 }
             }
