@@ -30,6 +30,8 @@ public class HttpMessage {
     private StringBuilder urlBuffer;
     private long bytesRead;
 
+    private boolean request, response;
+
     public ParsingStatus getParsingStatus() {
         return parsingStatus;
     }
@@ -45,10 +47,13 @@ public class HttpMessage {
         method =  new StringBuilder();
         status = new StringBuilder();
         parsingSectionSection = ParsingSectionSection.START_LINE;
+        this.response = false;
+        this.request = false;
     }
 
 
     public void readRequest(ByteBuffer message) {
+        request = true;
         message.flip();
         message.rewind();
 
@@ -109,7 +114,8 @@ public class HttpMessage {
     }
 
     private void isBodyRead() {
-        if (this.headers.containsKey("Content-Length") && bytesRead  >= Long.valueOf(this.headers.get("Content-Length"))) {
+        // FIXME the comparisson here should not be with bytes read but with body length
+        if (this.headers.containsKey("content-length") && bytesRead  >= Long.valueOf(this.headers.get("content-length"))) {
             this.parsingStatus = ParsingStatus.FINISH;
         }
         //TODO QUE HACEMOS CUANDO ON TENEMOS CONTENT LENGTH Y VIENE TRASNFER CHUNKED
@@ -126,6 +132,7 @@ public class HttpMessage {
     }
 
     public void readResponse(ByteBuffer message) {
+        response = true;
         message.flip();
         message.rewind();
 
@@ -236,7 +243,7 @@ public class HttpMessage {
                 if (b == '\n') {
                     this.parsingSection = ParsingSection.BODY;
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
-                    if (!headers.containsKey("content-length")) {
+                    if (!response && request && !headers.containsKey("content-length")) {
                         this.parsingStatus = ParsingStatus.FINISH;
                     }
                 }
@@ -255,5 +262,16 @@ public class HttpMessage {
         status = new StringBuilder();
         parsingSectionSection = ParsingSectionSection.START_LINE;
         this.bytesRead = 0;
+        this.response = false;
+        this.request = false;
+    }
+
+    public void resetRequest() {
+        this.parsingStatus = ParsingStatus.PENDING;
+        this.parsingSection = ParsingSection.HEAD;
+        this.headers = new HashMap<String, String>();
+        this.bytesRead = 0;
+        this.response = false;
+        this.request = false;
     }
 }

@@ -108,6 +108,7 @@ public class ClientHandler implements TCPProtocol {
                } else {
                    connection.getHttpMessage().readRequest(connection.buffer);
                    sendToServer(key);
+                   connection.getHttpMessage().reset();
                }
             }
         }
@@ -146,9 +147,8 @@ public class ClientHandler implements TCPProtocol {
                         connection.setServerChannel(null);
                     }
                     closeChannels(key);
-                    connection.getHttpMessage().reset();
+                    connection.getHttpMessage().resetRequest();
                 }
-                // FIXME : Y con el server channel que estoy "descartando" qué pasa? Queda en el limbo?
             }
         } else {
             if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
