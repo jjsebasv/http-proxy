@@ -140,8 +140,11 @@ public class AdminHandler {
             case HELP:
                 buffer.put(AdminConstants.HELP);
                 break;
-            case LOG_REQUEST:
-                buffer.put(AdminConstants.LOG_REQUEST);
+            // case LOG_REQUEST:
+            //     buffer.put(AdminConstants.LOG_REQUEST);
+            //     break;
+            case ALREADY_LOGGED:
+                buffer.put(AdminConstants.USER_LOGGED);
                 break;
             case ERROR_USERNAME:
                 buffer.put(AdminConstants.WRONG_USERNAME);

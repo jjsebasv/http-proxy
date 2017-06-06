@@ -7,14 +7,15 @@ import pdc.proxy.Metrics;
  */
 public final class AdminConstants {
 
-    public static final byte[] WELCOME_MSG = ("Welcome to the Admin Manager\n").getBytes();
+    //public static final byte[] WELCOME_MSG = ("Welcome to the Admin Manager\n").getBytes();
+    public static final byte[] WELCOME_MSG = ("200 OK\r\nAdmin Panel (type: help if you need it)\n").getBytes();
     public static final byte[] LINE_SEPARATOR = ("**********************************************************************************\n").getBytes();
 
     /**
      * 200 OK - Request was correct - Data gives human readable information about response
      */
     public static final byte[] HELP = ("200 OK\r\nThis is help\r\n\r\n").getBytes();
-    public static final byte[] LOG_REQUEST = ("200 OK\r\nEnter username (type: user [USERNAME])\r\n\r\n").getBytes();
+    // public static final byte[] LOG_REQUEST = ("200 OK\r\nEnter username (type: user [USERNAME])\r\n\r\n").getBytes();
     public static final byte[] KNOWN_USER = ("200 OK\r\nKnown username (type: pass [PASS])\r\n\r\n").getBytes();
     public static final byte[] LOGGED_IN = ("200 OK\r\nYou are know logged in\r\n\r\n").getBytes();
     public static final byte[] LOGGED_OUT = ("200 OK\r\nGood Bye!\r\n\r\n").getBytes();
@@ -87,6 +88,7 @@ public final class AdminConstants {
      * The request was processed but some of the information given resulted in conflict
      * Data gives human readable information about response
      **/
+    public static final byte[] USER_LOGGED = ("409 Conflict\r\nYou are already logged in. Logout first to change account").getBytes();
     public static final byte[] USERNAME_IN_USE = ("409 Conflict\r\nUsername in use. Enter username (type: user [USERNAME])\r\n\r\n").getBytes();
 
 
