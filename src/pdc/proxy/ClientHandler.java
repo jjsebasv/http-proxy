@@ -118,8 +118,8 @@ public class ClientHandler implements TCPProtocol {
 
     public void handleWrite(SelectionKey key) throws IOException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        // Prepare buffer for writing
         //connection.buffer.flip();
+        // ** Prepare buffer for writing
         SocketChannel channel = (SocketChannel) key.channel();
 
         // DELETE THIS
@@ -136,13 +136,8 @@ public class ClientHandler implements TCPProtocol {
 
         if (!connection.buffer.hasRemaining()) { // Buffer completely written?
             // Nothing left, so no longer interested in writes
+            System.out.println("** No left in buffer **");
             key.interestOps(OP_READ);
-        } else if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
-            // We now can read again
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
-            key.interestOps(OP_READ | OP_WRITE);
-
             if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
                 System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
                 if (side.equals("client")) {
@@ -150,12 +145,19 @@ public class ClientHandler implements TCPProtocol {
                         connection.getServerChannel().close();
                         connection.setServerChannel(null);
                     }
+                    closeChannels(key);
+                    connection.getHttpMessage().reset();
                 }
-                key.channel().close();
-                connection.getHttpMessage().reset();
                 // FIXME : Y con el server channel que estoy "descartando" qué pasa? Queda en el limbo?
             }
+        } else {
+            if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
+                // We now can read again
+                if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
+                    System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
 
+                key.interestOps(OP_READ | OP_WRITE);
+            }
         }
         connection.buffer.compact(); // Make room for more data to be read in
     }
@@ -225,10 +227,24 @@ public class ClientHandler implements TCPProtocol {
      */
     public void writeInChannel(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
+        if (!key.isValid())
+            return;
         if (connection.buffer.hasRemaining()) {
             key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
         } else {
             key.interestOps(SelectionKey.OP_WRITE);
+        }
+    }
+
+    private void closeChannels(SelectionKey key){
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        try {
+            if (connection.getClientChannel() != null)
+                connection.getClientChannel().close();
+            if (connection.getServerChannel() != null)
+                connection.getServerChannel().close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
