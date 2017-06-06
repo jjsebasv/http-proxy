@@ -134,10 +134,10 @@ public class AdminParser {
             case LOG:
                 if (this.adding)
                     break;
-                if (value.toLowerCase().equals("in")) {
-                    this.logRequest = true;
-                    return AdminResponses.LOG_REQUEST;
-                }
+                // if (value.toLowerCase().equals("in")) {
+                //     this.logRequest = true;
+                //     return AdminResponses.LOG_REQUEST;
+                // }
                 if (value.toLowerCase().equals("out")) {
                     this.logged = false;
                     this.logRequest = false;
@@ -147,8 +147,11 @@ public class AdminParser {
                 }
                 break;
             case USER:
-                if (!this.logRequest) {
-                    return AdminResponses.UNAUTHORIZED;
+                // if (!this.logRequest) {
+                //     return AdminResponses.UNAUTHORIZED;
+                // }
+                if (this.logged) {
+                    return AdminResponses.ALREADY_LOGGED;
                 }
                 if (this.adding) {
                     String auxUser = this.username;

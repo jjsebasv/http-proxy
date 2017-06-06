@@ -31,5 +31,6 @@ public enum AdminResponses {
     TOTAL_ACCESSES,
     UNAUTHORIZED,
     INTERNAL_ERROR,
-    ERROR_BAD_REQUEST
+    ERROR_BAD_REQUEST,
+    ALREADY_LOGGED
 }

@@ -90,4 +90,8 @@ public class Metrics {
         this.methods.put(method, cant + 1);
     }
 
+    public void addFlippedImage() {
+        this.flippedImages ++;
+    }
+    
 }
