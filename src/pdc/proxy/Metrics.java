@@ -82,4 +82,15 @@ public class Metrics {
         this.convertedCharacters ++;
     }
 
+    public void addFlippedImage() {
+        this.flippedImages ++;
+    }
+
+    public void addGetRequest() {
+        this.getRequests ++;
+    }
+
+    public void addPostRequest() {
+        this.postRequests ++;
+    }
 }
