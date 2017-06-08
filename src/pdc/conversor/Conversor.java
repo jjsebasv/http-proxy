@@ -2,13 +2,17 @@ package pdc.conversor;
 
 import pdc.proxy.Metrics;
 
+import java.nio.ByteBuffer;
+
 /**
  * Created by sebastian on 5/27/17.
  */
 public class Conversor {
 
-    public static byte leet(char a) {
-        switch (a) {
+    public static boolean leetOn = true;
+
+    public static byte leetChar(char a) {
+        switch (Character.toLowerCase(a)) {
             case 'a':
                 Metrics.getInstance().addConvertedCharacter();
                 return (byte)'4';

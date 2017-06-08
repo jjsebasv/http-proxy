@@ -1,5 +1,6 @@
 package pdc.proxy;
 
+import pdc.conversor.Conversor;
 import pdc.parser.ParsingSectionSection;
 import pdc.parser.ParsingSection;
 import pdc.parser.ParsingStatus;
@@ -134,6 +135,7 @@ public class HttpMessage {
     }
 
     public void readResponse(ByteBuffer message) {
+        int i = 0;
         response = true;
         message.flip();
         message.rewind();
@@ -145,8 +147,13 @@ public class HttpMessage {
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
             parseResponse(c);
+            if (Conversor.leetOn &&  parsingSection == ParsingSection.BODY &&
+                    this.headers.containsKey("content-type") &&
+                    this.headers.get("content-type").equals("text/plain")) {
+                message.put(i, Conversor.leetChar(c));
+            }
+            i++;
         }
-        //bytesRead +=getBodyBytes(message);
         bytesRead += message.limit();
         isBodyRead();
         message.flip();
