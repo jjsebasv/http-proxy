@@ -57,6 +57,8 @@ public class HttpMessage {
 
     public void readRequest(ByteBuffer message) {
         request = true;
+        boolean enter = false;
+        int i = 0;
         message.flip();
         message.rewind();
 
@@ -67,8 +69,28 @@ public class HttpMessage {
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
             parseRequest(c);
+            if (c == '\n') {
+                enter = true;
+                i = messageAsChar.position();
+            } else {
+                enter = false;
+            }
         }
-
+        // The last char I read was a \n
+        /*
+           if (enter) {
+                bytesRead += message.limit();
+                isBodyRead();
+                message.flip();
+                message.rewind();
+            } else {
+                message.position(i);
+                message.compact();
+                message.limit(message.position());
+                message.position(0);
+                bytesRead += i;
+            }
+         */
         bytesRead += message.limit();
         isBodyRead();
         message.flip();
