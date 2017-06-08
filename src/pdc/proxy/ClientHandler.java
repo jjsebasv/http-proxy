@@ -89,6 +89,10 @@ public class ClientHandler implements TCPProtocol {
             connection.setClientKey(key);
         }
 
+        if (connection.buffer.position() == connection.buffer.capacity() && connection.getServerChannel() != null){
+            return;
+        }
+
         try {
             long bytesRead = keyChannel.read(connection.buffer);
 
@@ -124,6 +128,8 @@ public class ClientHandler implements TCPProtocol {
         SocketChannel channel = (SocketChannel) key.channel();
 
         // DELETE THIS
+        connection.buffer.flip();
+        connection.buffer.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
         String side = channelIsServerSide(channel, connection)? "server" : "client";
         //System.out.println("Sending this to " + side);
@@ -137,7 +143,7 @@ public class ClientHandler implements TCPProtocol {
 
         if (!connection.buffer.hasRemaining()) { // Buffer completely written?
             // Nothing left, so no longer interested in writes
-            System.out.println("** No left in buffer **");
+            //System.out.println("** No left in buffer **");
             key.interestOps(OP_READ);
             if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
                 System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
@@ -166,7 +172,7 @@ public class ClientHandler implements TCPProtocol {
 
     private void sendToClient(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        writeInChannel(connection.getClientKey());
+        writeInChannel(connection.getServerKey(), connection.getClientKey());
     }
 
 
@@ -175,43 +181,29 @@ public class ClientHandler implements TCPProtocol {
 
         try {
             if (connection.getServerChannel() == null) {
-                InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), 80);
-                SocketChannel serverChannel = SocketChannel.open(hostAddress);
-                logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
-                serverChannel.configureBlocking(false);
-                SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
-                connection.setServerKey(serverKey);
-                connection.setServerChannel(serverChannel);
+                connectToRemoteServer(key);
             }
-
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-                System.out.println("Proxy is writing to: " + connection.getHttpMessage().getUrl());
-            }
-            writeInChannel(connection.getServerKey());
+            writeInChannel(connection.getClientKey(), connection.getServerKey());
         }
         catch(ClosedByInterruptException e) {
             logger.error(e.toString());
             System.out.println("ClosedByInterruptException");
         }
-        catch(AsynchronousCloseException e) {
-            System.out.println("AsynchronousCloseException");
-        }
-        catch(UnresolvedAddressException e) {
-            logger.error(e.toString());
-            System.out.println("UnresolvedAddressException");
-        }
-        catch(UnsupportedAddressTypeException e) {
-            logger.error(e.toString());
-            System.out.println("UnsupportedAddressTypeException");
-        }
-        catch(SecurityException e) {
-            logger.error(e.toString());
-            System.out.println("SecurityException");
-        }
         catch(IOException e) {
             logger.error(e.toString());
             System.out.println("IOException");
         }
+    }
+
+    private void connectToRemoteServer(SelectionKey key) throws IOException {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), 80);
+        SocketChannel serverChannel = SocketChannel.open(hostAddress);
+        logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
+        serverChannel.configureBlocking(false);
+        SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
+        connection.setServerKey(serverKey);
+        connection.setServerChannel(serverChannel);
     }
 
 
@@ -227,14 +219,16 @@ public class ClientHandler implements TCPProtocol {
 	/**
      * Write data to a specific channel
      */
-    public void writeInChannel(SelectionKey key) {
-        ProxyConnection connection = (ProxyConnection) key.attachment();
-        if (!key.isValid())
+    public void writeInChannel(SelectionKey sourceKey, SelectionKey destKey) {
+        ProxyConnection connection = (ProxyConnection) sourceKey.attachment();
+        if (!sourceKey.isValid())
             return;
         if (connection.buffer.hasRemaining()) {
-            key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+            sourceKey.interestOps(SelectionKey.OP_READ);
+            destKey.interestOps(SelectionKey.OP_WRITE);
         } else {
-            key.interestOps(SelectionKey.OP_WRITE);
+            sourceKey.interestOps(SelectionKey.OP_READ);
+            destKey.interestOps(SelectionKey.OP_WRITE);
         }
     }
 
