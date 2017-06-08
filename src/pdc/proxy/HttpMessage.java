@@ -57,6 +57,7 @@ public class HttpMessage {
 
     public void readRequest(ByteBuffer message) {
         request = true;
+        int pos = message.position();
         message.flip();
         message.rewind();
 
@@ -73,6 +74,7 @@ public class HttpMessage {
         isBodyRead();
         message.flip();
         message.rewind();
+        message.position(pos);
     }
 
     public URL getUrl() {
@@ -135,6 +137,7 @@ public class HttpMessage {
     }
 
     public void readResponse(ByteBuffer message) {
+        int pos = message.position();
         int i = 0;
         response = true;
         message.flip();
@@ -158,6 +161,7 @@ public class HttpMessage {
         isBodyRead();
         message.flip();
         message.rewind();
+        message.position(pos);
     }
 
     // TODO -- delete this function
