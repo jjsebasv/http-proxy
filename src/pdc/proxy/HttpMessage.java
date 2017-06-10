@@ -29,6 +29,16 @@ public class HttpMessage {
     private StringBuilder method;
     private StringBuilder status;
     private StringBuilder urlBuffer;
+    private Metrics metrics = Metrics.getInstance();
+
+    public long getBytesRead() {
+        return bytesRead;
+    }
+
+    public void setBytesRead(long bytesRead) {
+        this.bytesRead = bytesRead;
+    }
+
     private long bytesRead;
     private long bodyBytes;
 
@@ -55,12 +65,15 @@ public class HttpMessage {
     }
 
 
+    /**
+     * Considers the given ByteBuffer as a HTTP request and parse it, leaving the buffer ready for the next operation
+     *
+     *
+     * @param message
+     *
+     */
     public void readRequest(ByteBuffer message) {
         request = true;
-        /*
-        boolean enter = false;
-        int i = 0;
-        */
         int pos = message.position();
         message.flip();
         message.rewind();
@@ -72,40 +85,19 @@ public class HttpMessage {
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
             parseRequest(c);
-            /*
-            if (c == '\n') {
-                enter = true;
-                i = messageAsChar.position();
-            } else {
-                enter = false;
-            }
-            */
         }
-        // The last char I read was a \n
-        /*
-           if (enter) {
-                bytesRead += message.limit();
-                isBodyRead();
-                message.flip();
-                message.rewind();
-            } else {
-                message.position(i);
-                message.compact();
-                message.limit(message.position());
-                message.position(0);
-                bytesRead += i;
-            }
-         */
         bytesRead += message.limit();
         isBodyRead();
         message.flip();
         message.rewind();
         message.position(pos);
+        metrics.addMethod(this.method);
     }
 
     public URL getUrl() {
         return this.url;
     }
+
 
     private void parseRequest (char c) {
         switch (parsingSection) {
@@ -162,6 +154,14 @@ public class HttpMessage {
         this.headers.put(stringHeaders[0], stringHeaders[1]);
     }
 
+
+    /**
+     * Considers the given ByteBuffer as a HTTP response and parse it, leaving the buffer ready for the next operation
+     *
+     *
+     * @param message
+     *
+     */
     public void readResponse(ByteBuffer message) {
         int pos = message.position();
         int i = 0;
@@ -188,29 +188,6 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         message.position(pos);
-    }
-
-    // TODO -- delete this function
-    private int getBodyBytes(ByteBuffer message) {
-        if (this.bytesRead == 0) {
-            int i = 0;
-            boolean endLine = false;
-            for (byte b: message.array()) { // FIXME : No usa array()!
-                if (b == 10) {
-                    endLine = true;
-                } else {
-                    if (b == 13 && endLine) {
-                        break;
-                    } else {
-                        endLine = false;
-                    }
-                }
-                i++;
-            }
-            return message.limit() - i;
-        } else {
-            return message.limit();
-        }
     }
 
     private void parseResponse(char c) {
@@ -291,6 +268,12 @@ public class HttpMessage {
         }
     }
 
+    /**
+     *
+     * Resets completely the actual HttpMessage in order to be ready for a new connection between client and server
+     *
+     *
+     */
     public void reset() {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;
@@ -307,6 +290,14 @@ public class HttpMessage {
         this.request = false;
     }
 
+
+    /**
+     *
+     * Resets only some params of the actual HttpMessage in order to be ready for new parsing but knowing some information
+     * might be needed from the connection.
+     *
+     *
+     */
     public void resetRequest() {
         this.parsingStatus = ParsingStatus.PENDING;
         this.parsingSection = ParsingSection.HEAD;

@@ -1,5 +1,8 @@
 package pdc.proxy;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Created by sebastian on 5/25/17.
  */
@@ -7,21 +10,19 @@ public class Metrics {
 
     private long totalAccesses;
     private long receivedBytes;
-    private long transferedBytes;
+    private long transferredBytes;
     private long convertedCharacters;
     private long flippedImages;
-    private long getRequests;
-    private long postRequests;
     private static Metrics instance;
+    private Map<String, Long> methods;
 
     private Metrics() {
         this.totalAccesses = 0;
         this.receivedBytes = 0;
-        this.transferedBytes = 0;
+        this.transferredBytes = 0;
         this.convertedCharacters = 0;
         this.flippedImages = 0;
-        this.getRequests = 0;
-        this.postRequests = 0;
+        this.methods = new HashMap<String, Long>();
     }
 
     public static Metrics getInstance() {
@@ -32,7 +33,7 @@ public class Metrics {
     }
 
     public String getTotalAccesses() {
-        return String.format("Total acceses: %d",totalAccesses);
+        return String.format("Total accesses: %d",totalAccesses);
     }
 
     public String getReceivedBytes() {
@@ -40,7 +41,7 @@ public class Metrics {
     }
 
     public String getTransferredBytes() {
-        return String.format("Transferred Bytes: %d",transferedBytes);
+        return String.format("Transferred Bytes: %d", transferredBytes);
     }
 
     public String getConvertedChars() {
@@ -53,7 +54,9 @@ public class Metrics {
 
     public String getMethodHistograms() {
         // FIXME : El enunciado pide soportar más que sólo GET y POST....
-        return String.format("GET requests: %d\nPOST requests: %d",getRequests, postRequests);
+        return String.format("GET requests: %d\nPOST requests: %d",
+                methods.containsKey("GET") ? methods.get("GET") : 0,
+                methods.containsKey("POST") ? methods.get("POST") : 0);
     }
 
     public String getAll() {
@@ -74,12 +77,17 @@ public class Metrics {
         this.receivedBytes += receivedBytes;
     }
 
-    public void addTransferedBytes(long transferedBytes) {
-        this.transferedBytes += transferedBytes;
+    public void addTransferredBytes(long transferredBytes) {
+        this.transferredBytes += transferredBytes;
     }
 
     public void addConvertedCharacter() {
         this.convertedCharacters ++;
+    }
+
+    public void addMethod(String method) {
+        Long cant = this.methods.containsKey(method) ? this.methods.get(method) : 0;
+        this.methods.put(method, cant + 1);
     }
 
 }
