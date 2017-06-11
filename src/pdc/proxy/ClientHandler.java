@@ -62,7 +62,6 @@ public class ClientHandler implements TCPProtocol {
      *
      */
     public void handleAccept(SelectionKey key) {
-        System.out.println("banda de gilada accept");
         try {
             SocketChannel clientChannel = ((ServerSocketChannel) key.channel()).accept();
             clientChannel.configureBlocking(false);
@@ -100,7 +99,6 @@ public class ClientHandler implements TCPProtocol {
      * @throws IOException
      */
     public void handleRead(SelectionKey key) {
-        System.out.print("banda de gilada");
         SocketChannel keyChannel = (SocketChannel) key.channel();
         ProxyConnection connection = (ProxyConnection) key.attachment();
         /* Client socket channel has pending data */
@@ -114,8 +112,6 @@ public class ClientHandler implements TCPProtocol {
 
         try {
             long bytesRead = keyChannel.read(connection.buffer);
-
-            String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
 
             if (bytesRead == -1) { // Did the other end close?
                 connection.getHttpMessage().reset();
@@ -158,11 +154,11 @@ public class ClientHandler implements TCPProtocol {
         String side = channelIsServerSide(channel, connection)? "server" : "client";
 
         // DELETE THIS
-//        connection.buffer.flip();
-//        connection.buffer.rewind();
-//        CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-//        //System.out.println("Sending this to " + side);
-//        System.out.println(charBuffer.toString());
+        connection.buffer.flip();
+        connection.buffer.rewind();
+        CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
+        //System.out.println("Sending this to " + side);
+        System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
         // UNTIL HERE

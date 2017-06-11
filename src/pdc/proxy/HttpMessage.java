@@ -209,6 +209,10 @@ public class HttpMessage {
                 parseHeader(c);
                 break;
             case BODY:
+                if (this.headers.containsKey("transfer-encoding") && this.headers.get("transfer-encoding").equals("chunked")) {
+                    System.out.println("transfer chunked amiguito");
+                    return;
+                }
                 parseBody(c);
                 bodyBytes++;
                 break;
