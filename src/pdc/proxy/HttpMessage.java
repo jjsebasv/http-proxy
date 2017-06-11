@@ -86,6 +86,33 @@ public class HttpMessage {
             char c = messageAsChar.get();
             parseRequest(c);
         }
+        if (this.url == null && this.headers.containsKey("host")) {
+            try {
+                String urlString = urlBuffer.toString();
+                String protocol = "http";
+                String path = "";
+                int port = 80;
+                if (urlString.endsWith("/")) {
+                    urlString = urlString.substring(0, urlBuffer.length()-2);
+                }
+                if (urlString.contains("://")) {
+                    protocol = urlString.split("://")[0];
+                    urlString = urlString.split("://")[1];
+                }
+                if (urlString.contains("/")) {
+                    path = "/" + urlString.split("/", 2)[1];
+                    urlString = urlString.split("/")[0];
+                }
+                if (urlString.contains(":")) {
+                    port = Integer.parseInt(urlString.split(":")[1]);
+                    urlString = urlString.split(":")[0];
+                }
+                this.url = new URL(protocol, this.headers.get("host").contains(":") ? this.headers.get("host").split(":")[0] : this.headers.get("host"), port, path);
+                //this.url = new URL(this.headers.get("host"));
+            } catch (MalformedURLException e) {
+                System.out.println("Malformed URL " + this.url);
+            }
+        }
         bytesRead += message.limit();
         isBodyRead();
         message.flip();
@@ -113,12 +140,6 @@ public class HttpMessage {
                         this.urlBuffer.append(c);
                     } else {
                         spaceCount++;
-                        // FIXME : Esto no maneja una request "tradicional" que no incluye el host en la primera linea (ie: GET / HTTP/1.1)
-                        try {
-                            this.url = new URL(this.urlBuffer.toString());
-                        } catch (MalformedURLException e) {
-                            System.out.println("Malformed URL " + this.url);
-                        }
                     }
                 } else {
                     if (c == '\n') {
@@ -147,9 +168,12 @@ public class HttpMessage {
     private void saveHeader(String StringBuilder) {
         String string = StringBuilder.toString();
         String stringHeaders[] = string.split(": ");
-        if (stringHeaders.length <= 1){
-            System.out.println("Something went wrong here");
-            return;
+        if (stringHeaders.length <= 1) {
+            stringHeaders = string.split(":");
+            if (stringHeaders.length <= 1) {
+                System.out.println("Something went wrong here");
+                return;
+            }
         }
         this.headers.put(stringHeaders[0], stringHeaders[1]);
     }
