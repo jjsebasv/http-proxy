@@ -113,10 +113,7 @@ public class ClientHandler implements TCPProtocol {
         try {
             long bytesRead = keyChannel.read(connection.buffer);
 
-            String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
-
             if (bytesRead == -1) { // Did the other end close?
-                logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
                 connection.getHttpMessage().reset();
                 closeChannels(key);
             } else if (bytesRead > 0) {
@@ -154,12 +151,12 @@ public class ClientHandler implements TCPProtocol {
     public void handleWrite(SelectionKey key) throws IOException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
+        String side = channelIsServerSide(channel, connection)? "server" : "client";
 
         // DELETE THIS
         connection.buffer.flip();
         connection.buffer.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-        String side = channelIsServerSide(channel, connection)? "server" : "client";
         //System.out.println("Sending this to " + side);
         System.out.println(charBuffer.toString());
         connection.buffer.flip();
@@ -175,9 +172,6 @@ public class ClientHandler implements TCPProtocol {
             if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
                 System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
                 if (side.equals("client")) {
-                    if (connection.getServerChannel() != null) {
-                        connection.setServerChannel(null);
-                    }
                     closeChannels(key);
                     connection.getHttpMessage().reset();
                 } else {
@@ -254,9 +248,9 @@ public class ClientHandler implements TCPProtocol {
      */
     private void connectToRemoteServer(SelectionKey key) throws IOException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), 9092);
+        InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), connection.getHttpMessage().getUrl().getPort());
         SocketChannel serverChannel = SocketChannel.open(hostAddress);
-        logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
+        logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl().getHost() + " Port: " +  connection.getHttpMessage().getUrl().getPort());
         serverChannel.configureBlocking(false);
         SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
         connection.setServerKey(serverKey);
@@ -309,10 +303,24 @@ public class ClientHandler implements TCPProtocol {
     private void closeChannels(SelectionKey key){
         ProxyConnection connection = (ProxyConnection) key.attachment();
         try {
-            if (connection.getClientChannel() != null)
+            if (connection.getClientChannel() != null) {
+                logger.debug("Closing client side " + connection.getHttpMessage().getUrl());
                 connection.getClientChannel().close();
-            if (connection.getServerChannel() != null)
+                connection.setClientChannel(null);
+            }
+            if (connection.getServerChannel() != null) {
+                logger.debug("Closing server side " + connection.getHttpMessage().getUrl());
                 connection.getServerChannel().close();
+                connection.setServerChannel(null);
+            }
+            if(connection.getClientKey() != null) {
+                connection.getClientKey().cancel();
+                connection.setClientKey(null);
+            }
+            if(connection.getServerKey() != null) {
+                connection.getServerKey().cancel();
+                connection.setServerKey(null);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
