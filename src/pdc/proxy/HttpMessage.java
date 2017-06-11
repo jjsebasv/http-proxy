@@ -1,10 +1,13 @@
 package pdc.proxy;
 
 import pdc.conversor.Conversor;
+import pdc.conversor.FlippedImage;
+import pdc.logger.HttpProxyLogger;
 import pdc.parser.ParsingSectionSection;
 import pdc.parser.ParsingSection;
 import pdc.parser.ParsingStatus;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -30,6 +33,8 @@ public class HttpMessage {
     private StringBuilder status;
     private StringBuilder urlBuffer;
     private Metrics metrics = Metrics.getInstance();
+    private FlippedImage image;
+    private HttpProxyLogger logger;
 
     public long getBytesRead() {
         return bytesRead;
@@ -62,6 +67,7 @@ public class HttpMessage {
         parsingSectionSection = ParsingSectionSection.START_LINE;
         this.response = false;
         this.request = false;
+        logger = HttpProxyLogger.getInstance();
     }
 
 
@@ -91,7 +97,7 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         message.position(pos);
-        metrics.addMethod(this.method);
+        metrics.addMethod(this.method.toString());
     }
 
     public URL getUrl() {
@@ -176,12 +182,36 @@ public class HttpMessage {
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
             parseResponse(c);
-            if (Conversor.leetOn &&  parsingSection == ParsingSection.BODY &&
-                    this.headers.containsKey("content-type") &&
-                    this.headers.get("content-type").equals("text/plain")) {
-                message.put(i, Conversor.leetChar(c));
+            if (parsingSection == ParsingSection.BODY) {
+                if (Conversor.leetOn) {
+                    if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("text/plain")) ||
+                            (this.url.getFile() != null && this.url.getFile().endsWith("txt"))) {
+                        byte chunkedByte = message.get(i);
+                        message.put(i, Conversor.leetChar(c));
+                    }
+                } else if (Conversor.flipOn) {
+                    if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/png")) ||
+                            (this.url.getFile() != null && this.url.getFile().endsWith("png"))) {
+                        if (this.image == null)
+                            this.image = new FlippedImage(i, "PNG");
+                        this.image.putByte(message.get(i));
+                    } else if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/jpeg")) ||
+                            (this.url.getFile() != null && this.url.getFile().endsWith("jpg"))) {
+                        if (this.image == null)
+                            this.image = new FlippedImage(i, "JPEG");
+                        this.image.putByte(message.get(i));
+                    }
+                }
             }
             i++;
+        }
+        if (this.image != null && this.parsingStatus == ParsingStatus.FINISH) {
+            try {
+                byte[] converted = this.image.getConvertedImage();
+                message.put(converted, this.image.getInitialPositionInMessage(), converted.length);
+            } catch (IOException e) {
+                logger.error(e.toString());
+            }
         }
         bytesRead += message.limit();
         isBodyRead();

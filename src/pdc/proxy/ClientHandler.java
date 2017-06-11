@@ -254,7 +254,7 @@ public class ClientHandler implements TCPProtocol {
      */
     private void connectToRemoteServer(SelectionKey key) throws IOException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), 80);
+        InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), 9092);
         SocketChannel serverChannel = SocketChannel.open(hostAddress);
         logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
         serverChannel.configureBlocking(false);
