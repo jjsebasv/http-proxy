@@ -30,6 +30,7 @@ public class HttpMessage {
     private StringBuilder status;
     private StringBuilder urlBuffer;
     private Metrics metrics = Metrics.getInstance();
+    private int lastChars = 0;
 
     public long getBytesRead() {
         return bytesRead;
@@ -94,6 +95,12 @@ public class HttpMessage {
         metrics.addMethod(this.method.toString());
     }
 
+    private void isBodyRead() {
+        if (this.headers.containsKey("content-length") && bodyBytes  >= Long.valueOf(this.headers.get("content-length"))) {
+            this.parsingStatus = ParsingStatus.FINISH;
+        }
+    }
+
     public URL getUrl() {
         return this.url;
     }
@@ -113,7 +120,6 @@ public class HttpMessage {
                         this.urlBuffer.append(c);
                     } else {
                         spaceCount++;
-                        // FIXME : Esto no maneja una request "tradicional" que no incluye el host en la primera linea (ie: GET / HTTP/1.1)
                         try {
                             this.url = new URL(this.urlBuffer.toString());
                         } catch (MalformedURLException e) {
@@ -136,14 +142,6 @@ public class HttpMessage {
         }
     }
 
-    private void isBodyRead() {
-        // FIXME the comparisson here should not be with bytes read but with body length
-        if (this.headers.containsKey("content-length") && bodyBytes  >= Long.valueOf(this.headers.get("content-length"))) {
-            this.parsingStatus = ParsingStatus.FINISH;
-        }
-        //TODO QUE HACEMOS CUANDO ON TENEMOS CONTENT LENGTH Y VIENE TRASNFER CHUNKED
-    }
-
     private void saveHeader(String StringBuilder) {
         String string = StringBuilder.toString();
         String stringHeaders[] = string.split(": ");
@@ -163,6 +161,7 @@ public class HttpMessage {
      *
      */
     public void readResponse(ByteBuffer message) {
+        System.out.println("********************");
         int pos = message.position();
         int i = 0;
         response = true;
@@ -188,6 +187,7 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         message.position(pos);
+        System.out.println("********************");
     }
 
     private void parseResponse(char c) {
@@ -210,27 +210,74 @@ public class HttpMessage {
                 break;
             case BODY:
                 if (this.headers.containsKey("transfer-encoding") && this.headers.get("transfer-encoding").equals("chunked")) {
-                    System.out.println("transfer chunked amiguito");
+                    parseChunkedBody(c);
                     return;
+                } else {
+                    parseBody(c);
                 }
-                parseBody(c);
                 bodyBytes++;
                 break;
         }
     }
 
-    // Si quedan los ultimos 4 bytes en distintas request se rompe todo
+    private void parseChunkedBody(char c) {
+
+        if (c == '\r') {
+            System.out.print("/r");
+        } else if (c == '\n') {
+            System.out.print("/n");
+        } else {
+            System.out.print("-");
+        }
+
+        switch (parsingSectionSection) {
+        case START_LINE:
+            if (c == '\r') {
+                this.lastChars++;
+            } else if (c == '\n') {
+                this.lastChars++;
+                this.parsingSectionSection = ParsingSectionSection.END_LINE;
+            }
+            break;
+        case END_LINE:
+            if (c == '\r') {
+                this.lastChars++;
+                this.parsingSectionSection = ParsingSectionSection.END_SECTION;
+            } else {
+                lastChars = 0;
+                this.parsingSectionSection = ParsingSectionSection.START_LINE;
+            }
+            break;
+        case END_SECTION:
+            this.parsingStatus = ParsingStatus.FINISH;
+            break;
+        }
+    }
+
     private void parseBody(char c) {
+        if (c == '\r') {
+            System.out.print("/r");
+        } else if (c == '\n') {
+            System.out.print("/n");
+        } else {
+            System.out.print("-");
+        }
+
         switch (parsingSectionSection) {
             case START_LINE:
-                if (c == '\n') {
+                if (c == '\r') {
+                    this.lastChars++;
+                } else if (c == '\n') {
+                    this.lastChars++;
                     this.parsingSectionSection = ParsingSectionSection.END_LINE;
                 }
                 break;
             case END_LINE:
                 if (c == '\r') {
+                    this.lastChars++;
                     this.parsingSectionSection = ParsingSectionSection.END_SECTION;
                 } else {
+                    lastChars = 0;
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
                 }
                 break;
