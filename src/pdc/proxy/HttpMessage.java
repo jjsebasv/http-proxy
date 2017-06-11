@@ -91,7 +91,7 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         message.position(pos);
-        metrics.addMethod(this.method);
+        metrics.addMethod(this.method.toString());
     }
 
     public URL getUrl() {
