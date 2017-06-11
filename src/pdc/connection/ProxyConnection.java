@@ -15,28 +15,24 @@ public class ProxyConnection implements Connection {
 	private SocketChannel clientChannel;
 	private SocketChannel serverChannel;
 	private SelectionKey serverKey;
+	public ByteBuffer buffer;
+	public HttpMessage httpMessage;
+	private SelectionKey clientKey;
+	private ConnectionType type;
 
-    public void setClientKey(SelectionKey clientKey) {
+	public void setClientKey(SelectionKey clientKey) {
         this.clientKey = clientKey;
     }
-
-    private SelectionKey clientKey;
 
     public SelectionKey getServerKey() {
         return serverKey;
     }
-
-    public ByteBuffer buffer;
-	public HttpMessage httpMessage;
-
-	private ConnectionType type;
 
 	public ProxyConnection(Selector selector) {
         this.buffer = ByteBuffer.allocate(Integer.parseInt(proxyConfiguration.getProperty("buffer_size")));
         this.httpMessage = new HttpMessage();
 		this.type = ConnectionType.HTTP;
 	}
-
 
 	public SocketChannel getClientChannel() {
 		return clientChannel;

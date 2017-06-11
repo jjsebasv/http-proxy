@@ -148,7 +148,7 @@ public class ClientHandler implements TCPProtocol {
      * @throws IOException
      *
      */
-    public void handleWrite(SelectionKey key) throws IOException {
+    public void handleWrite(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
         String side = channelIsServerSide(channel, connection)? "server" : "client";
@@ -164,31 +164,37 @@ public class ClientHandler implements TCPProtocol {
         // UNTIL HERE
 
 
-        long bytesWritten = channel.write(connection.buffer);
-        if (!connection.buffer.hasRemaining()) { // Buffer completely written?
-            // Nothing left, so no longer interested in writes
+        long bytesWritten = 0;
+        try {
+            bytesWritten = channel.write(connection.buffer);
 
-            key.interestOps(OP_READ);
-            if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
-                System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
-                if (side.equals("client")) {
-                    closeChannels(key);
-                    connection.getHttpMessage().reset();
-                } else {
-                    connection.getHttpMessage().resetRequest();
+            if (!connection.buffer.hasRemaining()) { // Buffer completely written?
+                // Nothing left, so no longer interested in writes
+
+                key.interestOps(OP_READ);
+                if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
+                    System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
+                    if (side.equals("client")) {
+                        closeChannels(key);
+                        connection.getHttpMessage().reset();
+                    } else {
+                        connection.getHttpMessage().resetRequest();
+                    }
+                }
+            } else {
+                if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
+                    // We now can read again
+                    if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
+                        System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+
+                    key.interestOps(OP_READ | OP_WRITE);
                 }
             }
-        } else {
-            if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
-                // We now can read again
-                if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                    System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
-
-                key.interestOps(OP_READ | OP_WRITE);
-            }
+            metrics.addTransferredBytes(bytesWritten);
+            connection.buffer.compact(); // Make room for more data to be read in
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        metrics.addTransferredBytes(bytesWritten);
-        connection.buffer.compact(); // Make room for more data to be read in
     }
 
 
