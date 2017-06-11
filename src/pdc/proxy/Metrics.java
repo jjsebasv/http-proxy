@@ -55,6 +55,7 @@ public class Metrics {
     public String getMethodHistograms() {
         // FIXME : El enunciado pide soportar más que sólo GET y POST....
         return String.format("GET requests: %d\nPOST requests: %d",
+                methods.containsKey("HEAD") ? methods.get("HEAD") : 0,
                 methods.containsKey("GET") ? methods.get("GET") : 0,
                 methods.containsKey("POST") ? methods.get("POST") : 0);
     }
