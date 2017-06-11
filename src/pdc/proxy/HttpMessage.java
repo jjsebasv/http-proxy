@@ -94,7 +94,7 @@ public class HttpMessage {
                 String path = "";
                 int port = 80;
                 if (urlString.endsWith("/")) {
-                    urlString = urlString.substring(0, urlBuffer.length()-2);
+                    urlString = urlString.substring(0, urlBuffer.length()-1);
                 }
                 if (urlString.contains("://")) {
                     protocol = urlString.split("://")[0];
@@ -200,6 +200,7 @@ public class HttpMessage {
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
             parseResponse(c);
+
             if (Conversor.leetOn &&  parsingSection == ParsingSection.BODY &&
                     this.headers.containsKey("content-type") &&
                     this.headers.get("content-type").equals("text/plain")) {
