@@ -54,6 +54,7 @@ public class ClientHandler implements TCPProtocol {
      * @throws IOException
      */
     public void handleAccept(SelectionKey key) {
+        System.out.println("banda de gilada accept");
         try {
             SocketChannel clientChannel = ((ServerSocketChannel) key.channel()).accept();
             clientChannel.configureBlocking(false);
@@ -82,6 +83,7 @@ public class ClientHandler implements TCPProtocol {
      * @throws IOException
      */
     public void handleRead(SelectionKey key) {
+        System.out.print("banda de gilada");
         SocketChannel keyChannel = (SocketChannel) key.channel();
         ProxyConnection connection = (ProxyConnection) key.attachment();
         /* Client socket channel has pending data */
@@ -197,9 +199,9 @@ public class ClientHandler implements TCPProtocol {
 
     private void connectToRemoteServer(SelectionKey key) throws IOException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), 80);
+        InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), connection.getHttpMessage().getUrl().getPort());
         SocketChannel serverChannel = SocketChannel.open(hostAddress);
-        logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl() + " - CLIENT CHANNEL " + connection.getClientChannel().hashCode());
+        logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl().getHost() + " Port: " +  connection.getHttpMessage().getUrl().getPort());
         serverChannel.configureBlocking(false);
         SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
         connection.setServerKey(serverKey);
