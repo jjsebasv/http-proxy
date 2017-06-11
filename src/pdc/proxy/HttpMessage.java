@@ -216,23 +216,33 @@ public class HttpMessage {
                 } else if (Conversor.flipOn) {
                     if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/png")) ||
                             (this.url.getFile() != null && this.url.getFile().endsWith("png"))) {
-                        if (this.image == null)
-                            this.image = new FlippedImage(i, "PNG");
-                        this.image.putByte(message.get(i));
+                        if (this.image == null) {
+                            this.image = new FlippedImage(i+1, "PNG");
+                        } else {
+                            this.image.putByte(message.get(i));
+                        }
                     } else if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/jpeg")) ||
                             (this.url.getFile() != null && this.url.getFile().endsWith("jpg"))) {
-                        if (this.image == null)
+                        if (this.image == null) {
                             this.image = new FlippedImage(i, "JPEG");
-                        this.image.putByte(message.get(i));
+                        } else {
+                            this.image.putByte(message.get(i));
+                        }
                     }
                 }
             }
             i++;
         }
-        if (this.image != null && this.parsingStatus == ParsingStatus.FINISH) {
+        if (this.image != null) {
             try {
                 byte[] converted = this.image.getConvertedImage();
-                message.put(converted, this.image.getInitialPositionInMessage(), converted.length);
+                if (converted.length < message.limit()) {
+                    int k = this.image.getInitialPositionInMessage();
+                    for (int j = 0; j < converted.length; j++) {
+                        message.put(k, converted[j]);
+                        k++;
+                    }
+                }
             } catch (IOException e) {
                 logger.error(e.toString());
             }

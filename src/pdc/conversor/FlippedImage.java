@@ -56,7 +56,7 @@ public class FlippedImage {
         if (this.type.equals("PNG")) {
             ImageIO.write( i2, "png", baos );
         } else {
-            ImageIO.write( i2, "jpeg", baos );
+            ImageIO.write( i2, "jpg", baos );
         }
         baos.flush();
         return baos.toByteArray();
