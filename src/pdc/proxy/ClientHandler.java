@@ -116,7 +116,6 @@ public class ClientHandler implements TCPProtocol {
             String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
 
             if (bytesRead == -1) { // Did the other end close?
-                logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
                 connection.getHttpMessage().reset();
                 closeChannels(key);
             } else if (bytesRead > 0) {
@@ -309,10 +308,16 @@ public class ClientHandler implements TCPProtocol {
     private void closeChannels(SelectionKey key){
         ProxyConnection connection = (ProxyConnection) key.attachment();
         try {
-            if (connection.getClientChannel() != null)
+            if (connection.getClientChannel() != null) {
+                logger.debug("Closing client side" + connection.getHttpMessage().getUrl());
                 connection.getClientChannel().close();
-            if (connection.getServerChannel() != null)
+                connection.getClientKey().cancel();
+            }
+            if (connection.getServerChannel() != null) {
+                logger.debug("Closing server side" + connection.getHttpMessage().getUrl());
                 connection.getServerChannel().close();
+                connection.getServerKey().;
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
