@@ -1,10 +1,13 @@
 package pdc.proxy;
 
 import pdc.conversor.Conversor;
+import pdc.conversor.FlippedImage;
+import pdc.logger.HttpProxyLogger;
 import pdc.parser.ParsingSectionSection;
 import pdc.parser.ParsingSection;
 import pdc.parser.ParsingStatus;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -30,6 +33,8 @@ public class HttpMessage {
     private StringBuilder status;
     private StringBuilder urlBuffer;
     private Metrics metrics = Metrics.getInstance();
+    private FlippedImage image;
+    private HttpProxyLogger logger;
     private int lastChars = 0;
 
     public long getBytesRead() {
@@ -63,6 +68,7 @@ public class HttpMessage {
         parsingSectionSection = ParsingSectionSection.START_LINE;
         this.response = false;
         this.request = false;
+        logger = HttpProxyLogger.getInstance();
     }
 
 
@@ -86,6 +92,33 @@ public class HttpMessage {
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
             parseRequest(c);
+        }
+        if (this.url == null && this.headers.containsKey("host")) {
+            try {
+                String urlString = urlBuffer.toString();
+                String protocol = "http";
+                String path = "";
+                int port = 80;
+                if (urlString.endsWith("/")) {
+                    urlString = urlString.substring(0, urlBuffer.length()-1);
+                }
+                if (urlString.contains("://")) {
+                    protocol = urlString.split("://")[0];
+                    urlString = urlString.split("://")[1];
+                }
+                if (urlString.contains("/")) {
+                    path = "/" + urlString.split("/", 2)[1];
+                    urlString = urlString.split("/")[0];
+                }
+                if (urlString.contains(":")) {
+                    port = Integer.parseInt(urlString.split(":")[1]);
+                    urlString = urlString.split(":")[0];
+                }
+                this.url = new URL(protocol, this.headers.get("host").contains(":") ? this.headers.get("host").split(":")[0] : this.headers.get("host"), port, path);
+                //this.url = new URL(this.headers.get("host"));
+            } catch (MalformedURLException e) {
+                System.out.println("Malformed URL " + this.url);
+            }
         }
         bytesRead += message.limit();
         isBodyRead();
@@ -120,11 +153,6 @@ public class HttpMessage {
                         this.urlBuffer.append(c);
                     } else {
                         spaceCount++;
-                        try {
-                            this.url = new URL(this.urlBuffer.toString());
-                        } catch (MalformedURLException e) {
-                            System.out.println("Malformed URL " + this.url);
-                        }
                     }
                 } else {
                     if (c == '\n') {
@@ -145,9 +173,12 @@ public class HttpMessage {
     private void saveHeader(String StringBuilder) {
         String string = StringBuilder.toString();
         String stringHeaders[] = string.split(": ");
-        if (stringHeaders.length <= 1){
-            System.out.println("Something went wrong here");
-            return;
+        if (stringHeaders.length <= 1) {
+            stringHeaders = string.split(":");
+            if (stringHeaders.length <= 1) {
+                System.out.println("Something went wrong here");
+                return;
+            }
         }
         this.headers.put(stringHeaders[0], stringHeaders[1]);
     }
@@ -175,12 +206,36 @@ public class HttpMessage {
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
             parseResponse(c);
-            if (Conversor.leetOn &&  parsingSection == ParsingSection.BODY &&
-                    this.headers.containsKey("content-type") &&
-                    this.headers.get("content-type").equals("text/plain")) {
-                message.put(i, Conversor.leetChar(c));
+            if (parsingSection == ParsingSection.BODY) {
+                if (Conversor.leetOn) {
+                    if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("text/plain")) ||
+                            (this.url.getFile() != null && this.url.getFile().endsWith("txt"))) {
+                        byte chunkedByte = message.get(i);
+                        message.put(i, Conversor.leetChar(c));
+                    }
+                } else if (Conversor.flipOn) {
+                    if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/png")) ||
+                            (this.url.getFile() != null && this.url.getFile().endsWith("png"))) {
+                        if (this.image == null)
+                            this.image = new FlippedImage(i, "PNG");
+                        this.image.putByte(message.get(i));
+                    } else if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/jpeg")) ||
+                            (this.url.getFile() != null && this.url.getFile().endsWith("jpg"))) {
+                        if (this.image == null)
+                            this.image = new FlippedImage(i, "JPEG");
+                        this.image.putByte(message.get(i));
+                    }
+                }
             }
             i++;
+        }
+        if (this.image != null && this.parsingStatus == ParsingStatus.FINISH) {
+            try {
+                byte[] converted = this.image.getConvertedImage();
+                message.put(converted, this.image.getInitialPositionInMessage(), converted.length);
+            } catch (IOException e) {
+                logger.error(e.toString());
+            }
         }
         bytesRead += message.limit();
         isBodyRead();
