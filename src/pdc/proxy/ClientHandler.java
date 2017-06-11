@@ -1,13 +1,10 @@
 package pdc.proxy;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.BindException;
-import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.*;
 import java.nio.charset.Charset;
@@ -27,6 +24,7 @@ public class ClientHandler implements TCPProtocol {
     String proxyHost;
     int proxyPort;
     InetSocketAddress listenAddress;
+    Metrics metrics = Metrics.getInstance();
 
 
 	public ClientHandler(Selector selector) {
@@ -48,10 +46,20 @@ public class ClientHandler implements TCPProtocol {
         }
 	}
 
+
     /**
-     * Accept connections to HTTP Proxy
-     * @param key connection
+     *
+     * Handles incoming connections to client port
+     *
+     * Handles the received key - which is acceptable - and creates the clientChannel
+     *
+     * Registers the key with a ProxyConnection that afterwards will be accessed by the
+     * attachment field.
+     * It uses the selector inside the key.
+     *
+     * @param key
      * @throws IOException
+     *
      */
     public void handleAccept(SelectionKey key) {
         System.out.println("banda de gilada accept");
@@ -70,6 +78,7 @@ public class ClientHandler implements TCPProtocol {
                 System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
             }
             this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
+            metrics.addAccess();
         } catch (ClosedChannelException e) {
             this.logger.error("Cannot register key as READ");
         } catch (IOException e) {
@@ -77,8 +86,16 @@ public class ClientHandler implements TCPProtocol {
         }
     }
 
+
     /**
-     * Read from the socket channel
+     * Handles incoming reads from both server and clients
+     *
+     * Handles the received key - which is readable - and gets its channel that afterwards will
+     * be compared with the connection's server channel. If equal, the message will be sent to
+     * the client, else to the server.
+     *
+     *
+     *  @param key
      * @param key
      * @throws IOException
      */
@@ -98,14 +115,9 @@ public class ClientHandler implements TCPProtocol {
         try {
             long bytesRead = keyChannel.read(connection.buffer);
 
-            String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
-            //System.out.println("Bytes read " + bytesRead + " from " + side);
-
             if (bytesRead == -1) { // Did the other end close?
-                logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
-                keyChannel.close();
-                //key.cancel();
                 connection.getHttpMessage().reset();
+                closeChannels(key);
             } else if (bytesRead > 0) {
                 // FIXME -- Ver que pasa cuando cierro el browser
                if (channelIsServerSide(keyChannel, connection)) {
@@ -114,8 +126,10 @@ public class ClientHandler implements TCPProtocol {
                } else {
                    connection.getHttpMessage().readRequest(connection.buffer);
                    sendToServer(key);
-                   //connection.getHttpMessage().reset();
                }
+
+               metrics.addReceivedBytes(connection.getHttpMessage().getBytesRead());
+               connection.getHttpMessage().setBytesRead(0);
             }
         }
         catch (IOException e) {
@@ -123,61 +137,92 @@ public class ClientHandler implements TCPProtocol {
         }
     }
 
-    public void handleWrite(SelectionKey key) throws IOException {
+
+    /**
+     * Handles incoming writes from both server and clients
+     *
+     * Handles the received key - which is writable - and gets its channel, which will be used to write the information
+     * given in the buffer contained by de connection in the attachment.
+     *
+     *
+     *  @param key
+     * @param key
+     * @throws IOException
+     *
+     */
+    public void handleWrite(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
-        //connection.buffer.flip();
-        // ** Prepare buffer for writing
         SocketChannel channel = (SocketChannel) key.channel();
+        String side = channelIsServerSide(channel, connection)? "server" : "client";
 
         // DELETE THIS
         connection.buffer.flip();
         connection.buffer.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-        String side = channelIsServerSide(channel, connection)? "server" : "client";
         //System.out.println("Sending this to " + side);
         System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
         // UNTIL HERE
 
-        long bytesWritten = channel.write(connection.buffer);
-        //System.out.println("Bytes written " + bytesWritten + " to " + side);
 
-        if (!connection.buffer.hasRemaining()) { // Buffer completely written?
-            // Nothing left, so no longer interested in writes
-            //System.out.println("** No left in buffer **");
-            key.interestOps(OP_READ);
-            if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
-                System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
-                if (side.equals("client")) {
-                    if (connection.getServerChannel() != null) {
-                        connection.getServerChannel().close();
-                        connection.setServerChannel(null);
+        long bytesWritten = 0;
+        try {
+            bytesWritten = channel.write(connection.buffer);
+
+            if (!connection.buffer.hasRemaining()) { // Buffer completely written?
+                // Nothing left, so no longer interested in writes
+
+                key.interestOps(OP_READ);
+                if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
+                    System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
+                    if (side.equals("client")) {
+                        closeChannels(key);
+                        connection.getHttpMessage().reset();
+                    } else {
+                        connection.getHttpMessage().resetRequest();
                     }
-                    closeChannels(key);
-                    connection.getHttpMessage().reset();
-                } else {
-                    connection.getHttpMessage().resetRequest();
+                }
+            } else {
+                if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
+                    // We now can read again
+                    if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
+                        System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+
+                    key.interestOps(OP_READ | OP_WRITE);
                 }
             }
-        } else {
-            if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
-                // We now can read again
-                if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                    System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
-
-                key.interestOps(OP_READ | OP_WRITE);
-            }
+            metrics.addTransferredBytes(bytesWritten);
+            connection.buffer.compact(); // Make room for more data to be read in
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        connection.buffer.compact(); // Make room for more data to be read in
     }
 
+
+    /**
+     * Recognize which channel belongs to the client and which to the server and manage their keys accordingly
+     * for the client to be the one to be ready to receive information from the server
+     *
+     *
+     * @param key
+     *
+     */
     private void sendToClient(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         writeInChannel(connection.getServerKey(), connection.getClientKey());
     }
 
 
+    /**
+     * Recognize which channel belongs to the client and which to the server and manage their keys accordingly
+     * for the server to be the one to be ready to receive information from the client
+     *
+     * If the server channel is not yet initialed, it does so.
+     *
+     * @param key
+     *
+     */
     private void sendToServer(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
 
@@ -195,8 +240,20 @@ public class ClientHandler implements TCPProtocol {
             logger.error(e.toString());
             System.out.println("IOException");
         }
+        catch(UnresolvedAddressException e) {
+            logger.error(e.toString());
+            System.out.println("UnresolvedAddressException");
+        }
     }
 
+    /**
+     * Initializes the new connection with the server, creating a new channel from which it could be accessed afterwards.
+     * The channel is saved in the proxyConnection present in the attachment.
+     *
+     *
+     * @param key
+     *
+     */
     private void connectToRemoteServer(SelectionKey key) throws IOException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), connection.getHttpMessage().getUrl().getPort());
@@ -210,16 +267,26 @@ public class ClientHandler implements TCPProtocol {
 
 
     /**
-     * Ask if a channel is server side
+     * Compares the given channel with the server channel present in the given connection and check if the channel belongs
+     * to the server.
+     *
+     *
      * @param channel
-     * @return
+     * @param connection
+     * @return boolean whether if the channel belongs to the server
      */
     private boolean channelIsServerSide(SocketChannel channel, ProxyConnection connection) {
     	return channel.equals(connection.getServerChannel());
     }
 
-	/**
-     * Write data to a specific channel
+
+    /**
+     * Settles the keys accordingly for the source key to be readable and the dest key to be writable
+     *
+     *
+     * @param sourceKey
+     * @param destKey
+     *
      */
     public void writeInChannel(SelectionKey sourceKey, SelectionKey destKey) {
         ProxyConnection connection = (ProxyConnection) sourceKey.attachment();
@@ -234,13 +301,34 @@ public class ClientHandler implements TCPProtocol {
         }
     }
 
+    /**
+     * Given a key, a proxyConnection is determined, and both (client and server) channels are clossed.
+     *
+     *
+     * @param key
+     *
+     */
     private void closeChannels(SelectionKey key){
         ProxyConnection connection = (ProxyConnection) key.attachment();
         try {
-            if (connection.getClientChannel() != null)
+            if (connection.getClientChannel() != null) {
+                logger.debug("Closing client side " + connection.getHttpMessage().getUrl());
                 connection.getClientChannel().close();
-            if (connection.getServerChannel() != null)
+                connection.setClientChannel(null);
+            }
+            if (connection.getServerChannel() != null) {
+                logger.debug("Closing server side " + connection.getHttpMessage().getUrl());
                 connection.getServerChannel().close();
+                connection.setServerChannel(null);
+            }
+            if(connection.getClientKey() != null) {
+                connection.getClientKey().cancel();
+                connection.setClientKey(null);
+            }
+            if(connection.getServerKey() != null) {
+                connection.getServerKey().cancel();
+                connection.setServerKey(null);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

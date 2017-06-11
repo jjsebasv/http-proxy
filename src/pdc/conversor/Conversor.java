@@ -9,7 +9,8 @@ import java.nio.ByteBuffer;
  */
 public class Conversor {
 
-    public static boolean leetOn = true;
+    public static boolean leetOn = false;
+    public static boolean flipOn = true;
 
     public static byte leetChar(char a) {
         switch (Character.toLowerCase(a)) {
