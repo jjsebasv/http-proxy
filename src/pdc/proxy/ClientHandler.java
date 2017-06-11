@@ -153,14 +153,14 @@ public class ClientHandler implements TCPProtocol {
     public void handleWrite(SelectionKey key) throws IOException {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
+        String side = channelIsServerSide(channel, connection)? "server" : "client";
 
         // DELETE THIS
-        connection.buffer.flip();
-        connection.buffer.rewind();
-        CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-        String side = channelIsServerSide(channel, connection)? "server" : "client";
-        //System.out.println("Sending this to " + side);
-        System.out.println(charBuffer.toString());
+//        connection.buffer.flip();
+//        connection.buffer.rewind();
+//        CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
+//        //System.out.println("Sending this to " + side);
+//        System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
         // UNTIL HERE
@@ -174,9 +174,6 @@ public class ClientHandler implements TCPProtocol {
             if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
                 System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
                 if (side.equals("client")) {
-                    if (connection.getServerChannel() != null) {
-                        connection.setServerChannel(null);
-                    }
                     closeChannels(key);
                     connection.getHttpMessage().reset();
                 } else {
@@ -309,14 +306,22 @@ public class ClientHandler implements TCPProtocol {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         try {
             if (connection.getClientChannel() != null) {
-                logger.debug("Closing client side" + connection.getHttpMessage().getUrl());
+                logger.debug("Closing client side " + connection.getHttpMessage().getUrl());
                 connection.getClientChannel().close();
-                connection.getClientKey().cancel();
+                connection.setClientChannel(null);
             }
             if (connection.getServerChannel() != null) {
-                logger.debug("Closing server side" + connection.getHttpMessage().getUrl());
+                logger.debug("Closing server side " + connection.getHttpMessage().getUrl());
                 connection.getServerChannel().close();
-                connection.getServerKey().;
+                connection.setServerChannel(null);
+            }
+            if(connection.getClientKey() != null) {
+                connection.getClientKey().cancel();
+                connection.setClientKey(null);
+            }
+            if(connection.getServerKey() != null) {
+                connection.getServerKey().cancel();
+                connection.setServerKey(null);
             }
         } catch (IOException e) {
             e.printStackTrace();
