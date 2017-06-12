@@ -125,9 +125,14 @@ public class HttpMessage {
         isBodyRead();
         message.flip();
         message.rewind();
-        ByteBuffer newMessage = (ByteBuffer) removeAcceptEncoding(message);
         metrics.addMethod(this.method.toString());
-        return newMessage;
+
+        if (this.headers.containsKey("accept-encoding") && this.headers.get("accept-encoding").contains("gzip")){
+            ByteBuffer newMessage = (ByteBuffer) removeAcceptEncoding(message);
+            newMessage.position(newMessage.limit());
+            return newMessage;
+        }
+        return message;
     }
 
     private Buffer removeAcceptEncoding(ByteBuffer message) {

@@ -255,6 +255,7 @@ public class ClientHandler implements TCPProtocol {
         InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), connection.getHttpMessage().getUrl().getPort());
         SocketChannel serverChannel = null;
         try {
+            //FIXME -- This throws java.net.ConnectException: Connection refused. We should do something like dns error
             serverChannel = SocketChannel.open(hostAddress);
             logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl().getHost() + " Port: " +  connection.getHttpMessage().getUrl().getPort());
             serverChannel.configureBlocking(false);
