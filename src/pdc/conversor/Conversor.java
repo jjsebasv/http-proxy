@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  * Created by sebastian on 5/27/17.
  */
 public class Conversor {
-
+    
     public static boolean leetOn = false;
     public static boolean flipOn = false;
 

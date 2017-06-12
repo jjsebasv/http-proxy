@@ -199,7 +199,6 @@ public class HttpMessage {
      *
      */
     public void readResponse(ByteBuffer message) {
-        System.out.println("********************");
         int pos = message.position();
         int i = 0;
         response = true;
@@ -260,7 +259,6 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         message.position(pos);
-        System.out.println("********************");
     }
 
     /**
@@ -303,15 +301,6 @@ public class HttpMessage {
      * @param c
      */
     private void parseChunkedBody(char c) {
-
-        if (c == '\r') {
-            System.out.print("/r");
-        } else if (c == '\n') {
-            System.out.print("/n");
-        } else {
-            System.out.print("-");
-        }
-
         switch (parsingSectionSection) {
         case START_LINE:
             if (c == '\r') {
@@ -342,14 +331,6 @@ public class HttpMessage {
      * @param c
      */
     private void parseBody(char c) {
-        if (c == '\r') {
-            System.out.print("/r");
-        } else if (c == '\n') {
-            System.out.print("/n");
-        } else {
-            System.out.print("-");
-        }
-
         switch (parsingSectionSection) {
             case START_LINE:
                 if (c == '\r') {

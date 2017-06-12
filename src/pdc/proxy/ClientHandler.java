@@ -1,10 +1,11 @@
 package pdc.proxy;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.BindException;
+import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.*;
 import java.nio.charset.Charset;
@@ -195,7 +196,14 @@ public class ClientHandler implements TCPProtocol {
             metrics.addTransferredBytes(bytesWritten);
             connection.buffer.compact(); // Make room for more data to be read in
         } catch (IOException e) {
-            e.printStackTrace();
+            // If the write fails, write again (:
+            // Broken pipe exception
+            System.out.println(side);
+            System.out.println(channel.isConnected());
+            if (!channel.isConnected()) {
+                System.out.print("la comiste nowi");
+            }
+            System.out.print(e.getMessage());
         }
     }
 
@@ -226,24 +234,11 @@ public class ClientHandler implements TCPProtocol {
     private void sendToServer(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
 
-        try {
-            if (connection.getServerChannel() == null) {
-                connectToRemoteServer(key);
-            }
-            writeInChannel(connection.getClientKey(), connection.getServerKey());
+        if (connection.getServerChannel() == null) {
+            connectToRemoteServer(key);
         }
-        catch(ClosedByInterruptException e) {
-            logger.error(e.toString());
-            System.out.println("ClosedByInterruptException");
-        }
-        catch(IOException e) {
-            logger.error(e.toString());
-            System.out.println("IOException");
-        }
-        catch(UnresolvedAddressException e) {
-            logger.error(e.toString());
-            System.out.println("UnresolvedAddressException");
-        }
+
+        writeInChannel(connection.getClientKey(), connection.getServerKey());
     }
 
     /**
@@ -254,15 +249,41 @@ public class ClientHandler implements TCPProtocol {
      * @param key
      *
      */
-    private void connectToRemoteServer(SelectionKey key) throws IOException {
+    private void connectToRemoteServer(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), connection.getHttpMessage().getUrl().getPort());
-        SocketChannel serverChannel = SocketChannel.open(hostAddress);
-        logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl().getHost() + " Port: " +  connection.getHttpMessage().getUrl().getPort());
-        serverChannel.configureBlocking(false);
-        SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
-        connection.setServerKey(serverKey);
-        connection.setServerChannel(serverChannel);
+        SocketChannel serverChannel = null;
+        try {
+            serverChannel = SocketChannel.open(hostAddress);
+            logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl().getHost() + " Port: " +  connection.getHttpMessage().getUrl().getPort());
+            serverChannel.configureBlocking(false);
+            SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
+            connection.setServerKey(serverKey);
+            connection.setServerChannel(serverChannel);
+        } catch (UnresolvedAddressException e) {
+            sendDNSError(key);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendDNSError(SelectionKey key) {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        String current = null;
+        try {
+            current = new File(".").getCanonicalPath();
+            File file = new File(current + "/src/resources/error.html");
+            FileInputStream fis = new FileInputStream(file);
+            FileChannel fci = fis.getChannel();
+            connection.buffer.clear();
+            fci.read(connection.buffer);
+            connection.buffer.flip();
+            connection.buffer.rewind();
+            connection.getClientChannel().write(connection.buffer);
+            connection.getClientKey().cancel();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
