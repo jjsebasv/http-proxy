@@ -1,12 +1,10 @@
 package pdc.admin;
 
-import com.google.common.base.Charsets;
+import pdc.blocker.Blocker;
+import pdc.conversor.Conversor;
 import pdc.logger.HttpProxyLogger;
-import pdc.parser.ParsingSection;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 
 /**
  * Created by sebastian on 5/25/17.
@@ -17,22 +15,21 @@ public class AdminParser {
     private enum parsingSections { COMMAND, VALUE };
     private parsingSections section = parsingSections.COMMAND;
 
-    private boolean logRequest = false;
-    private boolean knownUsername = false;
-    private boolean logged = false;
+    private String enteredUser = null;
 
-    // FIXME -- Diff bet adding user and blacklist
-    private boolean adding = false;
+    private boolean addingUser = false;
     private String newUser;
+    private boolean addingBlakclist = false;
+    private boolean removingBlacklist = false;
 
     private String username;
+    private boolean logged = false;
 
     public AdminResponses parseCommands(ByteBuffer messageBuffer) {
         seeMessage(messageBuffer);
 
         AdminCommands command = AdminCommands.WRONG_COMMAND;
         byte[] auxBuffer = ByteBuffer.allocate(messageBuffer.capacity()).array();
-        //messageBuffer.flip();
 
         byte b;
         int i = 0;
@@ -94,6 +91,12 @@ public class AdminParser {
         if (command.toLowerCase().equals("pass")) {
             return AdminCommands.PASS;
         }
+        if (command.toLowerCase().equals("set")) {
+            return AdminCommands.SET;
+        }
+        if (command.toLowerCase().equals("remove")) {
+            return AdminCommands.REMOVE;
+        }
         return AdminCommands.WRONG_COMMAND;
     }
 
@@ -107,7 +110,7 @@ public class AdminParser {
                 if (!this.logged) {
                     return AdminResponses.UNAUTHORIZED;
                 }
-                if (this.adding)
+                if (this.addingUser || this.addingBlakclist || this.enteredUser == null)
                     break;
                 if (value.toLowerCase().equals("all-metrics")) {
                     return AdminResponses.ALL_METRICS;
@@ -132,113 +135,135 @@ public class AdminParser {
                 }
                 break;
             case LOG:
-                if (this.adding)
+                if (!this.logged) {
+                    return AdminResponses.UNAUTHORIZED;
+                }
+                if (this.addingUser  || this.addingBlakclist || this.enteredUser != null)
                     break;
-                // if (value.toLowerCase().equals("in")) {
-                //     this.logRequest = true;
-                //     return AdminResponses.LOG_REQUEST;
-                // }
                 if (value.toLowerCase().equals("out")) {
                     this.logged = false;
-                    this.logRequest = false;
-                    this.knownUsername = false;
                     this.username = null;
+                    this.enteredUser = null;
                     return AdminResponses.LOG_OUT;
                 }
                 break;
             case USER:
-                // if (!this.logRequest) {
-                //     return AdminResponses.UNAUTHORIZED;
-                // }
                 if (this.logged) {
                     return AdminResponses.ALREADY_LOGGED;
                 }
-                if (this.adding) {
-                    String auxUser = this.username;
+                if (this.enteredUser != null || this.addingBlakclist)
+                    break;
+                if (this.addingUser) {
+                    // If isValidUser(value) is true, then the user exists on the (user, pass) db
                     if(isValidUser(value)) {
-                        this.username = auxUser;
                         return AdminResponses.USER_IN_USE;
                     }
                     this.newUser = value;
-                    this.username = auxUser;
                     return AdminResponses.NEW_USER_OK;
                 }
-                if (isValidUser(value)) {
-                    this.knownUsername = true;
-                    return AdminResponses.KNOWN_USERNAME;
-                }
-                this.logRequest = false;
-                return AdminResponses.ERROR_USERNAME;
+                this.enteredUser = value;
+                return AdminResponses.OK_USERNAME;
             case PASS:
-                if (!knownUsername) {
+                if (this.enteredUser == null) {
                     return AdminResponses.UNAUTHORIZED;
                 }
-                if (this.adding) {
+                if (this.addingBlakclist)
+                    break;
+                if (this.addingUser) {
                     boolean add = Admin.getAdmins().add(new Admin(this.newUser, value));
                     this.newUser = null;
-                    this.adding = false;
+                    this.addingUser = false;
                     if (add)
                         return AdminResponses.USER_CREATED;
                     return AdminResponses.INTERNAL_ERROR;
                 }
-                if (isValidPass(value)) {
+                if (isValidUser(enteredUser) && isValidPass(enteredUser, value)) {
                     this.logged = true;
+                    this.username = enteredUser;
                     return AdminResponses.CONNECTED;
                 }
-                this.logRequest = false;
-                this.knownUsername = false;
                 this.username = null;
-                return AdminResponses.ERROR_PASSWORD;
+                this.enteredUser = null;
+                return AdminResponses.ERROR_LOG_IN;
             case ADD:
                 if (!this.logged) {
                     return AdminResponses.UNAUTHORIZED;
                 }
-                this.adding = true;
                 if (value.toLowerCase().equals("user")) {
+                    this.addingUser = true;
                     return AdminResponses.ADD_USER;
                 }
                 if (value.toLowerCase().equals("blacklist")) {
+                    this.addingBlakclist = true;
                     return AdminResponses.BLACK_LIST;
+                }
+                break;
+            case REMOVE:
+                if (this.addingUser  || this.addingBlakclist || this.enteredUser != null)
+                    break;
+                if (value.toLowerCase().equals("blacklist")) {
+                    this.removingBlacklist = true;
+                    return AdminResponses.REMOVE_BLACK_LIST;
                 }
                 break;
             case HOST:
                 if (!this.logged) {
                     return AdminResponses.UNAUTHORIZED;
                 }
-                if (!this.adding)
-                    break;
-                // TODO -- Add host blacklist
-                this.adding = false;
-                return AdminResponses.HOST_BLOCKED;
+                if (this.addingBlakclist) {
+                    Blocker.getInstance().addBlockedHost(value);
+                    this.addingBlakclist = false;
+                    return AdminResponses.HOST_BLOCKED;
+                }
+                if (this.removingBlacklist) {
+                    Blocker.getInstance().removeBlockedHost(value);
+                    this.removingBlacklist = false;
+                    return AdminResponses.UNBLOCKED_HOST;
+                }
+                break;
             case PORT:
                 if (!this.logged) {
                     return AdminResponses.UNAUTHORIZED;
                 }
-                if (!this.adding)
-                    break;
-                // TODO -- Add port blacklist
-                this.adding = false;
-                return AdminResponses.PORT_BLOCKED;
+                if (this.addingBlakclist) {
+                    try {
+                        Blocker.getInstance().addBlockedPort(Integer.parseInt(value));
+                    } catch (NumberFormatException e) {
+                        return AdminResponses.ERROR_BAD_REQUEST;
+                    }
+                    this.addingBlakclist = false;
+                    return AdminResponses.PORT_BLOCKED;
+                }
+                if (this.removingBlacklist) {
+                    try {
+                        Blocker.getInstance().removeBlockedPort(Integer.parseInt(value));
+                    } catch (NumberFormatException e) {
+                        return AdminResponses.ERROR_BAD_REQUEST;
+                    }
+                    this.removingBlacklist = false;
+                    return AdminResponses.UNBLOCKED_PORT;
+                }
+                break;
             case SET:
                 if (!this.logged) {
                     return AdminResponses.UNAUTHORIZED;
                 }
-                if (this.adding)
+                if (this.addingUser || this.addingBlakclist)
                     break;
                 if (value.toLowerCase().equals("leet-on")) {
-                    // TODO -- Turn on leet
+                    Conversor.leetOn = true;
                     return AdminResponses.LEET_ON;
                 }
                 if (value.toLowerCase().equals("leet-off")) {
-                    // TODO -- Turn off leet
+                    Conversor.leetOn = false;
                     return AdminResponses.LEET_OFF;
                 }
                 if (value.toLowerCase().equals("flip-on")) {
-                    // TODO -- Turn on flip
+                    Conversor.flipOn = true;
                     return AdminResponses.FLIP_ON;
                 }
-                if (value.toLowerCase().equals("flip-on")) {
-                    // TODO -- Turn off flip
+                if (value.toLowerCase().equals("flip-off")) {
+                    Conversor.flipOn = false;
                     return AdminResponses.FLIP_OFF;
                 }
                 break;
@@ -248,17 +273,15 @@ public class AdminParser {
 
     private boolean isValidUser(String value) {
         for (Admin a : Admin.getAdmins()) {
-            if (a.getUsername().equals(value)) {
-                this.username = value;
+            if (a.getUsername().equals(value))
                 return true;
-            }
         }
         return false;
     }
 
-    private boolean isValidPass(String value) {
+    private boolean isValidPass(String user, String value) {
         for (Admin a : Admin.getAdmins()) {
-            if (a.getUsername().equals(this.username) && a.getPassword().equals(value)) {
+            if (a.getUsername().equals(user) && a.getPassword().equals(value)) {
                 this.logged = true;
                 return true;
             }

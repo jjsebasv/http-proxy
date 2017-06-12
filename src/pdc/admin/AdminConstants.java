@@ -8,15 +8,32 @@ import pdc.proxy.Metrics;
 public final class AdminConstants {
 
     //public static final byte[] WELCOME_MSG = ("Welcome to the Admin Manager\n").getBytes();
-    public static final byte[] WELCOME_MSG = ("200 OK\r\nAdmin Panel (type: help if you need it)\n").getBytes();
+    public static final byte[] WELCOME_MSG = ("200 OK\r\nAdmin Panel (type: GET HELP if you need it)\n").getBytes();
     public static final byte[] LINE_SEPARATOR = ("**********************************************************************************\n").getBytes();
 
     /**
      * 200 OK - Request was correct - Data gives human readable information about response
      */
-    public static final byte[] HELP = ("200 OK\r\nThis is help\r\n\r\n").getBytes();
-    // public static final byte[] LOG_REQUEST = ("200 OK\r\nEnter username (type: user [USERNAME])\r\n\r\n").getBytes();
-    public static final byte[] KNOWN_USER = ("200 OK\r\nKnown username (type: pass [PASS])\r\n\r\n").getBytes();
+    public static final byte[] HELP = ("200 OK\r\nThis is help.\r\nAvailable Commands:\r\n" +
+            "USER <username>\r\n" +
+            "LOG OUT [require login]\r\n" +
+            "ADD USER [require login]\r\n" +
+            "ADD BLACKLIST [require login]\r\n" +
+            "REMOVE BLACKLIST [require login]\r\n" +
+            "GET ALL-METRICS [require login]\r\n" +
+            "GET BYTES-SENT [require login]\r\n" +
+            "GET BYTES-RECEIVED [require login]\r\n" +
+            "GET METHOD-HISTOGRAMS [require login]\r\n" +
+            "GET CONVERTED-CHARS [require login]\r\n" +
+            "GET FLIPPED-IMAGES [require login]\r\n" +
+            "GET TOTAL-ACCESSES [require login]\r\n" +
+            "SET LEET-ON [require login]\r\n" +
+            "SET LEET-OFF [require login]\r\n" +
+            "SET FLIP-ON [require login]\r\n" +
+            "SET FLIP-OFF [require login]\r\n" +
+            "\r\n\r\n"
+    ).getBytes();
+    public static final byte[] OK_USER = ("200 OK\r\nEnter Password (type: pass [PASS])\r\n\r\n").getBytes();
     public static final byte[] LOGGED_IN = ("200 OK\r\nYou are know logged in\r\n\r\n").getBytes();
     public static final byte[] LOGGED_OUT = ("200 OK\r\nGood Bye!\r\n\r\n").getBytes();
     public static final byte[] LEET_ON = ("200 OK\r\nThe leet converter is on\r\n\r\n").getBytes();
@@ -30,11 +47,12 @@ public final class AdminConstants {
 
     public static final byte[] ADDING_USER = ("200 OK\r\nEnter username (type: user [USERNAME])\r\n\r\n").getBytes();
     public static final byte[] ADDING_PASS = ("200 OK\r\nUsername available (type: pass [PASS])\r\n\r\n").getBytes();
-    public static final byte[] ADDING_BLACKLIST = ("200 OK\r\nYou can block hosts or ports (type: host [HOST] or port [PORT])\r\n\r\n").getBytes();
+    public static final byte[] ADDING_BLACKLIST = ("200 OK\r\nYou can block hosts or ports (type: host [HOST] / port [PORT])\r\n\r\n").getBytes();
+    public static final byte[] REMOVING_BLACKLIST = ("200 OK\r\nYou can unblock hosts or ports (type: host [HOST] / port [PORT])\r\n\r\n").getBytes();
 
     /**
      * 201 Created
-     * Request was correct and succesfully created what asked
+     * Request was correct and successfully created what asked
      * Data gives human readable information about response
      **/
     public static final byte[] USER_CREATED = ("201 Created\r\nUser created\r\n\r\n").getBytes();
@@ -49,7 +67,7 @@ public final class AdminConstants {
      */
     public static byte[] metricsRequested(String metrics) {
         String metricsAnswer = "";
-        if (metrics.equals("total_acceses")) {
+        if (metrics.equals("total_accesses")) {
             metricsAnswer = Metrics.getInstance().getTotalAccesses();
         } else if (metrics.equals("bytes_sent")) {
             metricsAnswer = Metrics.getInstance().getTransferredBytes();
@@ -57,7 +75,7 @@ public final class AdminConstants {
             metricsAnswer = Metrics.getInstance().getReceivedBytes();
         } else if (metrics.equals("converted_chars")) {
             metricsAnswer = Metrics.getInstance().getConvertedChars();
-        } else if (metrics.equals("flipped_immages")) {
+        } else if (metrics.equals("flipped_images")) {
             metricsAnswer = Metrics.getInstance().getFlippedImages();
         } else if (metrics.equals("method_histograms")) {
             metricsAnswer = Metrics.getInstance().getMethodHistograms();
@@ -80,7 +98,7 @@ public final class AdminConstants {
      * Data gives human readable information about response
      **/
     public static final byte[] WRONG_USERNAME = ("401 Unauthorized\r\nThe username specified doesn't exist\r\n\r\n").getBytes();
-    public static final byte[] WRONG_PASSWORD = ("401 Unauthorized\r\nUsername and password doesn't match\r\n\r\n").getBytes();
+    public static final byte[] ERROR_LOG_IN = ("401 Unauthorized\r\nUsername and password doesn't match\r\n\r\n").getBytes();
     public static final byte[] UNAUTHORIZED = ("401 Unauthorized\r\nYou should be logged in\r\n\r\n").getBytes();
 
     /**

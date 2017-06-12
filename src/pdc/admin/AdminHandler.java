@@ -1,9 +1,7 @@
 package pdc.admin;
 
-import com.sun.corba.se.spi.activation.Server;
 import pdc.config.ProxyConfiguration;
 import pdc.connection.AdminConnection;
-import pdc.connection.Connection;
 import pdc.logger.HttpProxyLogger;
 
 import java.io.IOException;
@@ -23,8 +21,6 @@ public class AdminHandler {
     private HttpProxyLogger logger = HttpProxyLogger.getInstance();
     private AdminParser parser = new AdminParser();
     private ServerSocketChannel adminServerChannel;
-    private SocketChannel adminClientChannel;
-    private SocketChannel serverChannel;
     private InetSocketAddress listenAddress;
     private boolean firstTime = true;
 
@@ -50,6 +46,7 @@ public class AdminHandler {
      * Creates a new ChannelBuffers object which will contain the read and write
      * buffers related to the channel.
      *
+     * @param key
      */
     public void handleAccept (SelectionKey key) {
         SocketChannel clientChannel = null;
@@ -59,8 +56,6 @@ public class AdminHandler {
             AdminConnection connection = new AdminConnection(key.selector());
             connection.setClientChannel(clientChannel);
             clientChannel.register(key.selector(), SelectionKey.OP_WRITE, connection);
-
-            this.adminClientChannel = clientChannel;
 
             /* Logs and information */
             Socket socket = clientChannel.socket();
@@ -78,6 +73,7 @@ public class AdminHandler {
      *
      * Parses the message and validates the syntax.
      *
+     * @param key
      */
     public void handleRead(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
@@ -100,6 +96,12 @@ public class AdminHandler {
 
     }
 
+    /**
+     * Handles incoming writes from administrators.
+     *
+     *
+     * @param key
+     */
     public void handleWrite(SelectionKey key) throws  IOException {
         AdminConnection connection = (AdminConnection) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
@@ -135,25 +137,21 @@ public class AdminHandler {
      *
      */
     private void respond(AdminResponses response, ByteBuffer buffer) throws IOException{
-        // FIXME : Por qué asumís que podés escribir y vas a poder escribir todos estos bytes?
         switch (response) {
             case HELP:
                 buffer.put(AdminConstants.HELP);
                 break;
-            // case LOG_REQUEST:
-            //     buffer.put(AdminConstants.LOG_REQUEST);
-            //     break;
             case ALREADY_LOGGED:
                 buffer.put(AdminConstants.USER_LOGGED);
                 break;
             case ERROR_USERNAME:
                 buffer.put(AdminConstants.WRONG_USERNAME);
                 break;
-            case KNOWN_USERNAME:
-                buffer.put(AdminConstants.KNOWN_USER);
+            case OK_USERNAME:
+                buffer.put(AdminConstants.OK_USER);
                 break;
-            case ERROR_PASSWORD:
-                buffer.put(AdminConstants.WRONG_PASSWORD);
+            case ERROR_LOG_IN:
+                buffer.put(AdminConstants.ERROR_LOG_IN);
                 break;
             case CONNECTED:
                 buffer.put(AdminConstants.LOGGED_IN);
@@ -197,11 +195,20 @@ public class AdminHandler {
             case BLACK_LIST:
                 buffer.put(AdminConstants.ADDING_BLACKLIST);
                 break;
+            case REMOVE_BLACK_LIST:
+                buffer.put(AdminConstants.REMOVING_BLACKLIST);
+                break;
             case HOST_BLOCKED:
                 buffer.put(AdminConstants.BLOCKED_HOST);
                 break;
             case PORT_BLOCKED:
                 buffer.put(AdminConstants.BLOCKED_PORT);
+                break;
+            case UNBLOCKED_HOST:
+                buffer.put(AdminConstants.UNBLOCKED_HOST);
+                break;
+            case UNBLOCKED_PORT:
+                buffer.put(AdminConstants.UNBLOCKED_PORT);
                 break;
             case LEET_ON:
                 buffer.put(AdminConstants.LEET_ON);
@@ -228,7 +235,6 @@ public class AdminHandler {
         }
     }
 
-    public SocketChannel getAdminChannel() { return this.adminClientChannel; }
     public ServerSocketChannel getAdminServerChannel() { return this.adminServerChannel; }
 
 }

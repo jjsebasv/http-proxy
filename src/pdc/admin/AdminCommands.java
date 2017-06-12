@@ -7,6 +7,7 @@ public enum AdminCommands {
     GET,
     LOG,
     ADD,
+    REMOVE,
     USER,
     PASS,
     HOST,

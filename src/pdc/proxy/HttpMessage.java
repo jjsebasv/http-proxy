@@ -63,7 +63,7 @@ public class HttpMessage {
         bytesRead = 0;
         bodyBytes = 0;
         this.urlBuffer = new StringBuilder();
-        method =  new StringBuilder();
+        method = new StringBuilder();
         status = new StringBuilder();
         parsingSectionSection = ParsingSectionSection.START_LINE;
         this.response = false;
@@ -125,7 +125,7 @@ public class HttpMessage {
         message.flip();
         message.rewind();
         message.position(pos);
-        metrics.addMethod(this.method.toString());
+        metrics.addMethod(this.method.toString().toUpperCase());
     }
 
     private void isBodyRead() {
@@ -242,6 +242,7 @@ public class HttpMessage {
                         message.put(k, converted[j]);
                         k++;
                     }
+                    Metrics.getInstance().addFlippedImage();
                 }
             } catch (IOException e) {
                 logger.error(e.toString());
