@@ -46,6 +46,11 @@ public class Request {
         }
     }
 
+    /**
+     * Check if the string received matches a known method name.
+     * @param r
+     * @return whether if the string received is a known method or not
+     */
     private boolean isMethod(String r) {
         if( r.startsWith("GET") || r.startsWith("POST") || r.startsWith("OPTIONS") || r.startsWith("HEAD") ||
                 r.startsWith("PUT") || r.startsWith("DELETE") || r.startsWith("CONNECT") || r.startsWith("TRACE") ||

@@ -36,6 +36,12 @@ public class FlippedImage {
         return flip(this.flippedImage.toByteArray());
     }
 
+    /**
+     * It creates a new image flipping the original
+     * @param orig
+     * @return the byte array of the flipped image
+     * @throws IOException
+     */
     private byte[] flip(byte[] orig) throws IOException {
         // Esta es la posta! lo que anda!
         ByteArrayInputStream data = new ByteArrayInputStream(orig);

@@ -39,12 +39,23 @@ public class ProxyConfiguration {
         }
     }
 
+    /**
+     * Get the value of a property
+     * @param property
+     * @return property value
+     */
     public String getProperty(String property) {
         if (properties.get(property) == null)
             return "";
         return properties.get(property).toString();
     }
 
+    /**
+     * Given a property and a value it sets the custom configuration.
+     * @param property
+     * @param value
+     * @throws IOException
+     */
     public void setProperty(String property, String value) throws IOException {
         String finalValue = "";
         if (property.startsWith("filter_")) {
@@ -68,6 +79,10 @@ public class ProxyConfiguration {
         }
     }
 
+    /**
+     * Writes the properties in a new file.
+     * @throws IOException
+     */
     private void flushPropertiesToFile() throws IOException {
         FileOutputStream fos = new FileOutputStream(this.file);
         properties.store(fos, "");
@@ -86,10 +101,18 @@ public class ProxyConfiguration {
         return properties.containsKey(property);
     }
 
+    /**
+     * @return all properties
+     */
     public String getAllProperties() {
         return propertiesFromSet(properties.keySet());
     }
 
+    /**
+     * Stringifies a set of properties
+     * @param set
+     * @return a set of properties stringified
+     */
     private String propertiesFromSet(Set<?> set) {
         StringBuilder all = new StringBuilder();
         for (Object key : set) {

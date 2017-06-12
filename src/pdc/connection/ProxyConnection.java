@@ -34,6 +34,9 @@ public class ProxyConnection implements Connection {
 		this.type = ConnectionType.HTTP;
 	}
 
+	/**
+	 * Getters and Setters for socket channels and selection keys.
+	 */
 	public SocketChannel getClientChannel() {
 		return clientChannel;
 	}

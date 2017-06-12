@@ -12,6 +12,11 @@ public class Conversor {
     public static boolean leetOn = false;
     public static boolean flipOn = false;
 
+    /**
+     * Given a char this function changes it if it's one of the special characters.
+     * @param a
+     * @return a converted character
+     */
     public static byte leetChar(char a) {
         switch (Character.toLowerCase(a)) {
             case 'a':
