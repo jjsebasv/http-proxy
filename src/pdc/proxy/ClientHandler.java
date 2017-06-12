@@ -125,7 +125,8 @@ public class ClientHandler implements TCPProtocol {
                    connection.getHttpMessage().readResponse(connection.buffer);
                    sendToClient(key);
                } else {
-                   connection.getHttpMessage().readRequest(connection.buffer);
+                   connection.buffer = connection.getHttpMessage().readRequest(connection.buffer);
+                   connection.buffer.position(connection.buffer.limit());
                    sendToServer(key);
                }
 

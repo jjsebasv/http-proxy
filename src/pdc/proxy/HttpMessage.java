@@ -9,6 +9,7 @@ import pdc.parser.ParsingStatus;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -79,7 +80,7 @@ public class HttpMessage {
      * @param message
      *
      */
-    public void readRequest(ByteBuffer message) {
+    public ByteBuffer readRequest(ByteBuffer message) {
         request = true;
         int pos = message.position();
         message.flip();
@@ -91,7 +92,7 @@ public class HttpMessage {
         messageAsChar.flip();
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
-            parseRequest(c);
+            parseRequest(c, messageAsChar.position());
         }
         if (this.url == null && this.headers.containsKey("host")) {
             try {
@@ -124,8 +125,41 @@ public class HttpMessage {
         isBodyRead();
         message.flip();
         message.rewind();
-        message.position(pos);
-        metrics.addMethod(this.method.toString().toUpperCase());
+        ByteBuffer newMessage = (ByteBuffer) removeAcceptEncoding(message);
+        metrics.addMethod(this.method.toString());
+        return newMessage;
+    }
+
+    private Buffer removeAcceptEncoding(ByteBuffer message) {
+        ByteBuffer header = ByteBuffer.allocate(100);
+        int quantity = 0;
+        for (int pos = 0; pos < message.limit(); pos++) {
+            byte b = message.get(pos);
+            if (b == 10) {
+                if (checkAcceptEncodingHeader(header)) {
+                    int i;
+                    for (i = pos - quantity - 2; i < message.limit() - quantity - 2; i++) {
+                        message.put(i, message.get(i + quantity + 1));
+                    }
+                    Buffer newMessage = message.limit(i);
+                    return newMessage;
+                } else {
+                    header = ByteBuffer.allocate(100);
+                    quantity = 0;
+                }
+            } else {
+                header.put(b);
+                quantity++;
+            }
+        }
+        return null;
+    }
+
+    private boolean checkAcceptEncodingHeader(ByteBuffer message) {
+        byte[] bytes = message.array();
+        String v = new String( bytes, Charset.forName("UTF-8") );
+        String[] strings = v.split(":");
+        return strings[0].toLowerCase().equals("accept-encoding");
     }
 
     /**
@@ -145,8 +179,9 @@ public class HttpMessage {
      * Receives a char and delegates its handling depending on which parsing section is currently active.
      *
      * @param c
+     * @param pos
      */
-    private void parseRequest (char c) {
+    private void parseRequest (char c, int pos) {
         switch (parsingSection) {
             case HEAD:
                 if (spaceCount == 0) {
@@ -168,7 +203,7 @@ public class HttpMessage {
                 }
                 break;
             case HEADERS:
-                parseHeader(c);
+                parseHeader(c, pos);
                 break;
             case BODY:
                 parseBody(c);
@@ -177,7 +212,7 @@ public class HttpMessage {
         }
     }
 
-    private void saveHeader(String StringBuilder) {
+    private void saveHeader(String StringBuilder, int pos) {
         String string = StringBuilder.toString();
         String stringHeaders[] = string.split(": ");
         if (stringHeaders.length <= 1) {
@@ -211,7 +246,7 @@ public class HttpMessage {
         messageAsChar.flip();
         while (messageAsChar.hasRemaining()) {
             char c = messageAsChar.get();
-            parseResponse(c);
+            parseResponse(c, messageAsChar.position());
             if (parsingSection == ParsingSection.BODY) {
                 if (Conversor.leetOn) {
                     if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("text/plain")) ||
@@ -261,11 +296,12 @@ public class HttpMessage {
         message.position(pos);
     }
 
+
     /**
-     * @see parseRequest
      * @param c
+     * @param position
      */
-    private void parseResponse(char c) {
+    private void parseResponse(char c, int position) {
         switch (parsingSection) {
             case HEAD:
                 if (spaceCount == 0) {
@@ -281,7 +317,7 @@ public class HttpMessage {
                 }
                 break;
             case HEADERS:
-                parseHeader(c);
+                parseHeader(c, position);
                 break;
             case BODY:
                 if (this.headers.containsKey("transfer-encoding") && this.headers.get("transfer-encoding").equals("chunked")) {
@@ -356,10 +392,10 @@ public class HttpMessage {
     }
 
     /**
-     * @see parseBody
      * @param b
+     * @param  pos
      */
-    private void parseHeader(char b) {
+    private void parseHeader(char b, int pos) {
         switch (parsingSectionSection) {
             case START_LINE:
                 if (b != '\n' && b != '\r') {
@@ -374,7 +410,7 @@ public class HttpMessage {
                 break;
             case END_LINE:
                 if (b == '\n') {
-                    saveHeader(this.headerLine.toString().toLowerCase());
+                    saveHeader(this.headerLine.toString().toLowerCase(), pos);
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
                     this.headerLine = new StringBuilder();
                 }
