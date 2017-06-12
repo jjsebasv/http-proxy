@@ -141,7 +141,7 @@ public class HttpMessage {
                     for (i = pos - quantity - 2; i < message.limit() - quantity - 2; i++) {
                         message.put(i, message.get(i + quantity + 1));
                     }
-                    Buffer newMessage = message.limit(i);
+                    Buffer newMessage = message.limit(i + 1);
                     return newMessage;
                 } else {
                     header = ByteBuffer.allocate(100);
