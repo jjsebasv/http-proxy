@@ -52,6 +52,9 @@ public class AdminConnection implements Connection {
         // TODO - Do this function
     }
 
+    /**
+     * Getters and Setters for socket channels and selection keys.
+     */
     public void setClientChannel(SocketChannel channel) {
         this.clientChannel = channel;
     }

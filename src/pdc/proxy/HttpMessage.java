@@ -128,6 +128,9 @@ public class HttpMessage {
         metrics.addMethod(this.method.toString().toUpperCase());
     }
 
+    /**
+     * Evaluates if there is still information to read in the body section.
+     */
     private void isBodyRead() {
         if (this.headers.containsKey("content-length") && bodyBytes  >= Long.valueOf(this.headers.get("content-length"))) {
             this.parsingStatus = ParsingStatus.FINISH;
@@ -138,7 +141,11 @@ public class HttpMessage {
         return this.url;
     }
 
-
+    /**
+     * Receives a char and delegates its handling depending on which parsing section is currently active.
+     *
+     * @param c
+     */
     private void parseRequest (char c) {
         switch (parsingSection) {
             case HEAD:
@@ -256,6 +263,10 @@ public class HttpMessage {
         System.out.println("********************");
     }
 
+    /**
+     * @see parseRequest
+     * @param c
+     */
     private void parseResponse(char c) {
         switch (parsingSection) {
             case HEAD:
@@ -286,6 +297,11 @@ public class HttpMessage {
         }
     }
 
+    /**
+     * Depending on the character it receives and the current parsing sections, this function sets the
+     * next state of the parsing section while parsing a chinked body
+     * @param c
+     */
     private void parseChunkedBody(char c) {
 
         if (c == '\r') {
@@ -320,6 +336,11 @@ public class HttpMessage {
         }
     }
 
+    /**
+     * Depending on the character it receives and the current parsing sections, this function sets the
+     * next state of the parsing section while parsing the body
+     * @param c
+     */
     private void parseBody(char c) {
         if (c == '\r') {
             System.out.print("/r");
@@ -353,6 +374,10 @@ public class HttpMessage {
         }
     }
 
+    /**
+     * @see parseBody
+     * @param b
+     */
     private void parseHeader(char b) {
         switch (parsingSectionSection) {
             case START_LINE:
