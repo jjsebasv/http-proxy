@@ -1,10 +1,7 @@
 package pdc.proxy;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.net.BindException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.*;
@@ -246,6 +243,13 @@ public class ClientHandler implements TCPProtocol {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), connection.getHttpMessage().getUrl().getPort());
         SocketChannel serverChannel = null;
+        String proxyHost = proxyConfiguration.getProperty("proxy_host");
+        String proxyPort = proxyConfiguration.getProperty("proxy_port");
+        URL url = connection.getHttpMessage().getUrl();
+        if((url.getHost().equals(proxyHost) || url.getHost().equals("127.0.0.1") || url.getHost().equals("localhost")) && Integer.valueOf(url.getPort()).equals(Integer.valueOf(proxyPort))) {
+            sendDNSError(key);
+            return;
+        }
         try {
             //FIXME -- This throws java.net.ConnectException: Connection refused. We should do something like dns error
             serverChannel = SocketChannel.open(hostAddress);
