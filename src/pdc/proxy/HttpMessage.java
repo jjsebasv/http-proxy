@@ -99,7 +99,7 @@ public class HttpMessage {
                         try {
                             this.url = new URL(this.urlBuffer.toString());
                         } catch (MalformedURLException e) {
-                            System.out.println("Malformed URL " + this.url);
+                            logger.error("Malformed URL " + this.url);
                         }
                     }
                 } else {
@@ -130,7 +130,7 @@ public class HttpMessage {
         String string = StringBuilder.toString();
         String stringHeaders[] = string.split(": ");
         if (stringHeaders.length <= 1){
-            System.out.println("Something went wrong here");
+            logger.error("Something went wrong here");
             return;
         }
         this.headers.put(stringHeaders[0], stringHeaders[1]);

@@ -42,7 +42,7 @@ public class ClientHandler implements TCPProtocol {
             logger = HttpProxyLogger.getInstance();
             logger.info("Client proxy started");
         } catch (BindException e) {
-            System.out.println("Address already in use");
+            logger.error("Address already in use");
         } catch (Exception e) {
             logger.error("Cant run proxy");
         }
@@ -65,9 +65,6 @@ public class ClientHandler implements TCPProtocol {
             Socket socket = clientChannel.socket();
             SocketAddress remoteAddress = socket.getRemoteSocketAddress();
             SocketAddress localAddress = socket.getLocalSocketAddress();
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-                System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
-            }
             this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
         } catch (ClosedChannelException e) {
             this.logger.error("Cannot register key as READ");
@@ -97,12 +94,10 @@ public class ClientHandler implements TCPProtocol {
             long bytesRead = keyChannel.read(connection.buffer);
 
             String side = channelIsServerSide(keyChannel, connection)? "server" : "client";
-            //System.out.println("Bytes read " + bytesRead + " from " + side);
 
             if (bytesRead == -1) { // Did the other end close?
                 logger.debug("Finish reading from " + connection.getHttpMessage().getUrl());
                 keyChannel.close();
-                //key.cancel();
                 connection.getHttpMessage().reset();
             } else if (bytesRead > 0) {
                 // FIXME -- Ver que pasa cuando cierro el browser
@@ -132,21 +127,17 @@ public class ClientHandler implements TCPProtocol {
         connection.buffer.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
         String side = channelIsServerSide(channel, connection)? "server" : "client";
-        //System.out.println("Sending this to " + side);
         System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
         // UNTIL HERE
 
         long bytesWritten = channel.write(connection.buffer);
-        //System.out.println("Bytes written " + bytesWritten + " to " + side);
 
-        if (!connection.buffer.hasRemaining()) { // Buffer completely written?
-            // Nothing left, so no longer interested in writes
-            //System.out.println("** No left in buffer **");
+        if (!connection.buffer.hasRemaining()) {
             key.interestOps(OP_READ);
             if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
-                System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
+                logger.info("Finish reading body " + connection.getHttpMessage().getUrl());
                 if (side.equals("client")) {
                     if (connection.getServerChannel() != null) {
                         connection.getServerChannel().close();
@@ -162,7 +153,7 @@ public class ClientHandler implements TCPProtocol {
             if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
                 // We now can read again
                 if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                    System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+                    logger.info("buffer has: " + connection.buffer.remaining() + " remaining bytes");
 
                 key.interestOps(OP_READ | OP_WRITE);
             }
@@ -187,11 +178,9 @@ public class ClientHandler implements TCPProtocol {
         }
         catch(ClosedByInterruptException e) {
             logger.error(e.toString());
-            System.out.println("ClosedByInterruptException");
         }
         catch(IOException e) {
             logger.error(e.toString());
-            System.out.println("IOException");
         }
     }
 

@@ -20,7 +20,6 @@ public class ChargenServer {
         } catch (RuntimeException ex) {
             port = DEFAULT_PORT;
         }
-        System.out.println("Listening for connections on port " + port);
 
         byte[] rotation = new byte[95*2];
         for (byte i = ' '; i <= '~'; i++) {

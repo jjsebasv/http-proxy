@@ -90,7 +90,6 @@ public class AdminHandler {
             key.cancel();
         } else if(bytesRead > 0) {
             if (channel.equals(connection.getClientChannel())) {
-                System.out.println("Send to server");
                 key.interestOps(SelectionKey.OP_WRITE);
             }
         } else {
@@ -110,8 +109,6 @@ public class AdminHandler {
                 channel.write(ByteBuffer.wrap(AdminConstants.LINE_SEPARATOR));
                 firstTime = false;
             } else {
-                // This works as admin server as well
-                System.out.println("Writing in client");
                 connection.buffer.flip();
                 AdminResponses response = parser.parseCommands(connection.buffer);
 
