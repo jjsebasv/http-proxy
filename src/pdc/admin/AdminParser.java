@@ -49,6 +49,8 @@ public class AdminParser {
                         if (b == ' ')
                             break;
                     }
+                    if (i <= 0)
+                        return AdminResponses.ERROR_BAD_REQUEST;
 
                     command = isValidCommand(new String(auxBuffer, 0, i-1));
                     if (!messageBuffer.hasRemaining() ||
