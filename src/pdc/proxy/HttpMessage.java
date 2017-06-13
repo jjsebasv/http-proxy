@@ -36,6 +36,7 @@ public class HttpMessage {
     private Metrics metrics = Metrics.getInstance();
     private FlippedImage image;
     private HttpProxyLogger logger;
+    private int linesCount = 0;
     private int lastChars = 0;
 
     public long getBytesRead() {
@@ -136,20 +137,20 @@ public class HttpMessage {
     }
 
     private Buffer removeAcceptEncoding(ByteBuffer message) {
-        ByteBuffer header = ByteBuffer.allocate(100);
+        ByteBuffer header = ByteBuffer.allocate(1024);
         int quantity = 0;
         for (int pos = 0; pos < message.limit(); pos++) {
             byte b = message.get(pos);
             if (b == 10) {
                 if (checkAcceptEncodingHeader(header)) {
                     int i;
-                    for (i = pos - quantity - 2; i < message.limit() - quantity - 2; i++) {
+                    for (i = pos - quantity; i < message.limit() - quantity -1 ; i++) {
                         message.put(i, message.get(i + quantity + 1));
                     }
                     Buffer newMessage = message.limit(i + 1);
                     return newMessage;
                 } else {
-                    header = ByteBuffer.allocate(100);
+                    header = ByteBuffer.allocate(1024);
                     quantity = 0;
                 }
             } else {
@@ -157,7 +158,7 @@ public class HttpMessage {
                 quantity++;
             }
         }
-        return null;
+        return message;
     }
 
     private boolean checkAcceptEncodingHeader(ByteBuffer message) {
@@ -253,13 +254,19 @@ public class HttpMessage {
             char c = messageAsChar.get();
             parseResponse(c, messageAsChar.position());
             if (parsingSection == ParsingSection.BODY) {
-                if (Conversor.leetOn) {
+                if (c == '\n') {
+                    this.linesCount++;
+                }
+                if (Conversor.getInstance().isLeetOn()) {
                     if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("text/plain")) ||
                             (this.url.getFile() != null && this.url.getFile().endsWith("txt"))) {
-                        byte chunkedByte = message.get(i);
-                        message.put(i, Conversor.leetChar(c));
+                        if (linesCount <= 1) {
+                            message.put(i, (byte) c);
+                        } else {
+                            message.put(i, Conversor.leetChar(c));
+                        }
                     }
-                } else if (Conversor.flipOn) {
+                } else if (Conversor.getInstance().isFlipOn()) {
                     if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/png")) ||
                             (this.url.getFile() != null && this.url.getFile().endsWith("png"))) {
                         if (this.image == null) {
@@ -423,6 +430,7 @@ public class HttpMessage {
             case END_SECTION:
                 if (b == '\n') {
                     this.parsingSection = ParsingSection.BODY;
+                    this.linesCount = 0;
                     this.parsingSectionSection = ParsingSectionSection.START_LINE;
                     if (!response && request && !headers.containsKey("content-length")) {
                         this.parsingStatus = ParsingStatus.FINISH;
@@ -452,6 +460,7 @@ public class HttpMessage {
         this.bodyBytes = 0;
         this.response = false;
         this.request = false;
+        this.linesCount = 0;
     }
 
 
@@ -469,5 +478,6 @@ public class HttpMessage {
         this.bytesRead = 0;
         this.response = false;
         this.request = false;
+        this.linesCount = 0;
     }
 }

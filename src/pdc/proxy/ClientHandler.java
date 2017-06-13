@@ -41,7 +41,7 @@ public class ClientHandler implements TCPProtocol {
             logger = HttpProxyLogger.getInstance();
             logger.info("Client proxy started");
         } catch (BindException e) {
-            System.out.println("Address already in use");
+            logger.error("Address already in use");
         } catch (Exception e) {
             logger.error("Cant run proxy");
         }
@@ -63,7 +63,6 @@ public class ClientHandler implements TCPProtocol {
      *
      */
     public void handleAccept(SelectionKey key) {
-        System.out.println("banda de gilada accept");
         try {
             SocketChannel clientChannel = ((ServerSocketChannel) key.channel()).accept();
             clientChannel.configureBlocking(false);
@@ -75,9 +74,6 @@ public class ClientHandler implements TCPProtocol {
             Socket socket = clientChannel.socket();
             SocketAddress remoteAddress = socket.getRemoteSocketAddress();
             SocketAddress localAddress = socket.getLocalSocketAddress();
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-                System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
-            }
             this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
             metrics.addAccess();
         } catch (ClosedChannelException e) {
@@ -101,7 +97,6 @@ public class ClientHandler implements TCPProtocol {
      * @throws IOException
      */
     public void handleRead(SelectionKey key) {
-        System.out.print("banda de gilada");
         SocketChannel keyChannel = (SocketChannel) key.channel();
         ProxyConnection connection = (ProxyConnection) key.attachment();
         /* Client socket channel has pending data */
@@ -161,7 +156,6 @@ public class ClientHandler implements TCPProtocol {
         connection.buffer.flip();
         connection.buffer.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-        //System.out.println("Sending this to " + side);
         System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
@@ -177,7 +171,7 @@ public class ClientHandler implements TCPProtocol {
 
                 key.interestOps(OP_READ);
                 if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
-                    System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
+                    logger.info("Finish reading body " + connection.getHttpMessage().getUrl());
                     if (side.equals("client")) {
                         closeChannels(key);
                         connection.getHttpMessage().reset();
@@ -189,7 +183,7 @@ public class ClientHandler implements TCPProtocol {
                 if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
                     // We now can read again
                     if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                        System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+                        logger.info("buffer has: " + connection.buffer.remaining() + " remaining bytes");
 
                     key.interestOps(OP_READ | OP_WRITE);
                 }
@@ -199,10 +193,8 @@ public class ClientHandler implements TCPProtocol {
         } catch (IOException e) {
             // If the write fails, write again (:
             // Broken pipe exception
-            System.out.println(side);
-            System.out.println(channel.isConnected());
             if (!channel.isConnected()) {
-                System.out.print("la comiste nowi");
+                System.out.print("la cagaste nowi");
             }
             System.out.print(e.getMessage());
         }

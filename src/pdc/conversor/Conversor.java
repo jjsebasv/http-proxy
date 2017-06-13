@@ -1,16 +1,44 @@
 package pdc.conversor;
 
+import pdc.config.ProxyConfiguration;
 import pdc.proxy.Metrics;
-
-import java.nio.ByteBuffer;
 
 /**
  * Created by sebastian on 5/27/17.
  */
 public class Conversor {
 
-    public static boolean leetOn = false;
-    public static boolean flipOn = false;
+    public static boolean leetOn;
+    public static boolean flipOn;
+
+    private static Conversor instance;
+
+    public static Conversor getInstance() {
+        if (instance == null)
+            instance = new Conversor();
+        return instance;
+    }
+
+    public Conversor() {
+        this.leetOn = Boolean.valueOf(ProxyConfiguration.getInstance().getProperty("leet"));
+        this.flipOn =  Boolean.valueOf(ProxyConfiguration.getInstance().getProperty("flip"));
+    }
+
+    public static boolean isLeetOn() {
+        return leetOn;
+    }
+
+    public static void setLeetOn(boolean leetOn) {
+        Conversor.leetOn = leetOn;
+    }
+
+    public static boolean isFlipOn() {
+        return flipOn;
+    }
+
+    public static void setFlipOn(boolean flipOn) {
+        Conversor.flipOn = flipOn;
+    }
 
     /**
      * Given a char this function changes it if it's one of the special characters.
