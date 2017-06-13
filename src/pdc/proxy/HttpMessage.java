@@ -266,7 +266,8 @@ public class HttpMessage {
                             message.put(i, Conversor.leetChar(c));
                         }
                     }
-                } else if (Conversor.getInstance().isFlipOn()) {
+                }
+                if (Conversor.getInstance().isFlipOn()) {
                     if ((this.headers.containsKey("content-type") && this.headers.get("content-type").equals("image/png")) ||
                             (this.url.getFile() != null && this.url.getFile().endsWith("png"))) {
                         if (this.image == null) {
