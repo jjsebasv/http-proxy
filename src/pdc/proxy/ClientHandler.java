@@ -260,7 +260,10 @@ public class ClientHandler implements TCPProtocol {
             connection.setServerChannel(serverChannel);
         } catch (UnresolvedAddressException e) {
             sendDNSError(key);
-        } catch (IOException e) {
+            logger.debug("DNSError");
+        }  catch (ConnectException e) {
+            logger.debug("Connection closed");
+        }catch (IOException e) {
             e.printStackTrace();
         }
     }
