@@ -97,6 +97,12 @@ public class AdminParser {
         if (command.toLowerCase().equals("remove")) {
             return AdminCommands.REMOVE;
         }
+        if (command.toLowerCase().equals("host")) {
+            return AdminCommands.HOST;
+        }
+        if (command.toLowerCase().equals("port")) {
+            return AdminCommands.PORT;
+        }
         return AdminCommands.WRONG_COMMAND;
     }
 
