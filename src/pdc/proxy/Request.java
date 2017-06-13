@@ -9,9 +9,7 @@ import java.util.Map;
 public class Request {
 
     private String method;
-    private String uri;
     private String url;
-    private String host;
     private String fullRequest;
     private Map<String, String> headers;
     private String requestBody;
@@ -33,13 +31,7 @@ public class Request {
             if (this.url.endsWith("/"))
                 this.url = this.url.substring(0, this.url.length() -1);
         }
-/*
-        for (int i = 1; i < requestParts.length; i++) {
-            String aux[] = requestParts[i].split(":", 2);
-            headers.put(aux[0], aux[1]);
-            if (aux[0].toLowerCase().equals("host")) this.host = aux[1];
-        }
-*/
+
         this.fullRequest = requestHead + "\r\n\r\n";
         if (this.requestBody != null) {
             this.fullRequest = this.fullRequest + this.requestBody + "\r\n\r\n";
@@ -59,23 +51,4 @@ public class Request {
         return false;
     }
 
-    public String getMethod() {
-        return method;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public String getHost() {
-        return host;
-    }
-
-    public String getFullRequest() {
-        return fullRequest;
-    }
-
-    public Map<String, String> getHeaders() {
-        return headers;
-    }
 }

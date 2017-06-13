@@ -1,10 +1,11 @@
 package pdc.proxy;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.BindException;
+import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.*;
 import java.nio.charset.Charset;
@@ -40,7 +41,7 @@ public class ClientHandler implements TCPProtocol {
             logger = HttpProxyLogger.getInstance();
             logger.info("Client proxy started");
         } catch (BindException e) {
-            System.out.println("Address already in use");
+            logger.error("Address already in use");
         } catch (Exception e) {
             logger.error("Cant run proxy");
         }
@@ -62,7 +63,6 @@ public class ClientHandler implements TCPProtocol {
      *
      */
     public void handleAccept(SelectionKey key) {
-        System.out.println("banda de gilada accept");
         try {
             SocketChannel clientChannel = ((ServerSocketChannel) key.channel()).accept();
             clientChannel.configureBlocking(false);
@@ -74,9 +74,6 @@ public class ClientHandler implements TCPProtocol {
             Socket socket = clientChannel.socket();
             SocketAddress remoteAddress = socket.getRemoteSocketAddress();
             SocketAddress localAddress = socket.getLocalSocketAddress();
-            if (Boolean.valueOf(proxyConfiguration.getProperty("verbose"))) {
-                System.out.println("Accepted new client connection from " + localAddress + " to " + remoteAddress);
-            }
             this.logger.info("Accepted new client connection from " + localAddress + " to " + remoteAddress);
             metrics.addAccess();
         } catch (ClosedChannelException e) {
@@ -100,7 +97,6 @@ public class ClientHandler implements TCPProtocol {
      * @throws IOException
      */
     public void handleRead(SelectionKey key) {
-        System.out.print("banda de gilada");
         SocketChannel keyChannel = (SocketChannel) key.channel();
         ProxyConnection connection = (ProxyConnection) key.attachment();
         /* Client socket channel has pending data */
@@ -124,7 +120,8 @@ public class ClientHandler implements TCPProtocol {
                    connection.getHttpMessage().readResponse(connection.buffer);
                    sendToClient(key);
                } else {
-                   connection.getHttpMessage().readRequest(connection.buffer);
+                   connection.buffer = connection.getHttpMessage().readRequest(connection.buffer);
+                   connection.buffer.position(connection.buffer.limit());
                    sendToServer(key);
                }
 
@@ -159,7 +156,6 @@ public class ClientHandler implements TCPProtocol {
         connection.buffer.flip();
         connection.buffer.rewind();
         CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-        //System.out.println("Sending this to " + side);
         System.out.println(charBuffer.toString());
         connection.buffer.flip();
         connection.buffer.rewind();
@@ -175,7 +171,7 @@ public class ClientHandler implements TCPProtocol {
 
                 key.interestOps(OP_READ);
                 if (connection.getHttpMessage().getParsingStatus() == ParsingStatus.FINISH) {
-                    System.out.println("Finish reading body " + connection.getHttpMessage().getUrl());
+                    logger.info("Finish reading body " + connection.getHttpMessage().getUrl());
                     if (side.equals("client")) {
                         closeChannels(key);
                         connection.getHttpMessage().reset();
@@ -187,7 +183,7 @@ public class ClientHandler implements TCPProtocol {
                 if ((key.interestOps() & SelectionKey.OP_READ) == 0) {
                     // We now can read again
                     if (Boolean.valueOf(proxyConfiguration.getProperty("verbose")))
-                        System.out.println("buffer has: " + connection.buffer.remaining() + " remaining bytes");
+                        logger.info("buffer has: " + connection.buffer.remaining() + " remaining bytes");
 
                     key.interestOps(OP_READ | OP_WRITE);
                 }
@@ -195,7 +191,12 @@ public class ClientHandler implements TCPProtocol {
             metrics.addTransferredBytes(bytesWritten);
             connection.buffer.compact(); // Make room for more data to be read in
         } catch (IOException e) {
-            e.printStackTrace();
+            // If the write fails, write again (:
+            // Broken pipe exception
+            if (!channel.isConnected()) {
+                System.out.print("la cagaste nowi");
+            }
+            System.out.print(e.getMessage());
         }
     }
 
@@ -226,24 +227,11 @@ public class ClientHandler implements TCPProtocol {
     private void sendToServer(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
 
-        try {
-            if (connection.getServerChannel() == null) {
-                connectToRemoteServer(key);
-            }
-            writeInChannel(connection.getClientKey(), connection.getServerKey());
+        if (connection.getServerChannel() == null) {
+            connectToRemoteServer(key);
         }
-        catch(ClosedByInterruptException e) {
-            logger.error(e.toString());
-            System.out.println("ClosedByInterruptException");
-        }
-        catch(IOException e) {
-            logger.error(e.toString());
-            System.out.println("IOException");
-        }
-        catch(UnresolvedAddressException e) {
-            logger.error(e.toString());
-            System.out.println("UnresolvedAddressException");
-        }
+
+        writeInChannel(connection.getClientKey(), connection.getServerKey());
     }
 
     /**
@@ -254,15 +242,42 @@ public class ClientHandler implements TCPProtocol {
      * @param key
      *
      */
-    private void connectToRemoteServer(SelectionKey key) throws IOException {
+    private void connectToRemoteServer(SelectionKey key) {
         ProxyConnection connection = (ProxyConnection) key.attachment();
         InetSocketAddress hostAddress = new InetSocketAddress(connection.getHttpMessage().getUrl().getHost(), connection.getHttpMessage().getUrl().getPort());
-        SocketChannel serverChannel = SocketChannel.open(hostAddress);
-        logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl().getHost() + " Port: " +  connection.getHttpMessage().getUrl().getPort());
-        serverChannel.configureBlocking(false);
-        SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
-        connection.setServerKey(serverKey);
-        connection.setServerChannel(serverChannel);
+        SocketChannel serverChannel = null;
+        try {
+            //FIXME -- This throws java.net.ConnectException: Connection refused. We should do something like dns error
+            serverChannel = SocketChannel.open(hostAddress);
+            logger.info("Connecting proxy to: " + connection.getHttpMessage().getUrl().getHost() + " Port: " +  connection.getHttpMessage().getUrl().getPort());
+            serverChannel.configureBlocking(false);
+            SelectionKey serverKey = serverChannel.register(key.selector(), OP_READ, connection);
+            connection.setServerKey(serverKey);
+            connection.setServerChannel(serverChannel);
+        } catch (UnresolvedAddressException e) {
+            sendDNSError(key);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendDNSError(SelectionKey key) {
+        ProxyConnection connection = (ProxyConnection) key.attachment();
+        String current = null;
+        try {
+            current = new File(".").getCanonicalPath();
+            File file = new File(current + "/src/resources/error.html");
+            FileInputStream fis = new FileInputStream(file);
+            FileChannel fci = fis.getChannel();
+            connection.buffer.clear();
+            fci.read(connection.buffer);
+            connection.buffer.flip();
+            connection.buffer.rewind();
+            connection.getClientChannel().write(connection.buffer);
+            connection.getClientKey().cancel();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
