@@ -149,15 +149,8 @@ public class ClientHandler implements TCPProtocol {
         SocketChannel channel = (SocketChannel) key.channel();
         String side = channelIsServerSide(channel, connection)? "server" : "client";
 
-        // DELETE THIS
         connection.buffer.flip();
         connection.buffer.rewind();
-        CharBuffer charBuffer = Charset.forName("UTF-8").decode(connection.buffer);
-        System.out.println(charBuffer.toString());
-        connection.buffer.flip();
-        connection.buffer.rewind();
-        // UNTIL HERE
-
 
         long bytesWritten = 0;
         try {
