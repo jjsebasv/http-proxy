@@ -25,6 +25,13 @@ public class AdminParser {
     private String username;
     private boolean logged = false;
 
+    /**
+     * This function parses whatever the Admin writes in console.
+     * Depending on which section is active, it consider the input a command or a value
+     * @param messageBuffer
+     * @return It returns an Admin response (enum)
+     * @see AdminResponses
+     */
     public AdminResponses parseCommands(ByteBuffer messageBuffer) {
         seeMessage(messageBuffer);
 
@@ -75,6 +82,12 @@ public class AdminParser {
         logger.info("[Admin] Command written " + messageString.split("\n")[0]);
     }
 
+    /**
+     * Checks command vailidity
+     * @param command
+     * @return an Admin command (might be WRONG_COMMAND)
+     * @see AdminCommands
+     */
     private AdminCommands isValidCommand(String command) {
         if (command.toLowerCase().equals("get")) {
             return AdminCommands.GET;
@@ -106,6 +119,13 @@ public class AdminParser {
         return AdminCommands.WRONG_COMMAND;
     }
 
+    /**
+     * Checks the value validity (depending on the prior command written)
+     * @param command
+     * @param value
+     * @return an Admin response
+     * @see AdminResponses
+     */
     private AdminResponses checkValue(AdminCommands command, String value) {
         this.section = parsingSections.COMMAND;
         switch (command) {
@@ -277,6 +297,11 @@ public class AdminParser {
         return AdminResponses.ERROR_BAD_REQUEST;
     }
 
+    /**
+     * Checks that the user requested exists
+     * @param value
+     * @return boolean
+     */
     private boolean isValidUser(String value) {
         for (Admin a : Admin.getAdmins()) {
             if (a.getUsername().equals(value))
@@ -285,6 +310,12 @@ public class AdminParser {
         return false;
     }
 
+    /**
+     * Checks that the password matches with the already validated user's password
+     * @param
+     * @param value
+     * @return boolean
+     */
     private boolean isValidPass(String user, String value) {
         for (Admin a : Admin.getAdmins()) {
             if (a.getUsername().equals(user) && a.getPassword().equals(value)) {

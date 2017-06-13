@@ -26,6 +26,9 @@ public class Admin {
     private static final Set<Admin> admins = new HashSet<Admin>();
     public static Set<Admin> getAdmins() { return admins; }
 
+    /**
+     * Creates default admin
+     */
     public static void generateFirstAdmin() {
         admins.add(new Admin("juan", "juanjuan123"));
     }
